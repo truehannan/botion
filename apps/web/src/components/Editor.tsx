@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { BlockNoteView } from '@blocknote/mantine';
-import { SuggestionMenuController } from '@blocknote/react';
-import { useCreateBlockNote } from '@blocknote/core';
+import { useCreateBlockNote, SuggestionMenuController } from '@blocknote/react';
 import { useUIStore } from '@/stores/uiStore';
 import { createYjsProvider } from '@/lib/yjsProvider';
 import * as Y from 'yjs';
@@ -22,18 +21,16 @@ export function Editor() {
     return createYjsProvider(selectedPageId, doc, () => {});
   }, [selectedPageId, doc]);
 
-  const editor = useCreateBlockNote(
-    {
-      schema,
-      collaboration: provider
-        ? {
-            provider: provider as any,
-            fragment: doc.getXmlFragment('document-store'),
-            user: { name: 'User', color: '#2563eb' },
-          }
-        : undefined,
-    },
-  );
+  const editor = useCreateBlockNote({
+    schema,
+    collaboration: provider
+      ? {
+          provider: provider as any,
+          fragment: doc.getXmlFragment('document-store'),
+          user: { name: 'User', color: '#2563eb' },
+        }
+      : undefined,
+  });
 
   useEffect(() => {
     return () => {
@@ -69,7 +66,7 @@ export function Editor() {
           />
           <SuggestionMenuController
             triggerCharacter="@"
-            getItems={async (query) => []}
+            getItems={async () => []}
             suggestionMenuComponent={({ query, closeMenu }) => (
               <MentionSuggestionMenu
                 query={query ?? ''}

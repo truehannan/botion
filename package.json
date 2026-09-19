@@ -4,18 +4,23 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "concurrently \"pnpm dev:api\" \"pnpm dev:web\"",
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",
-    "dev:tauri": "pnpm --filter web tauri dev",
+    "dev:tauri": "pnpm --filter web tauri:dev",
+    "build": "pnpm -r build",
     "build:api": "pnpm --filter api build",
     "build:web": "pnpm --filter web build",
-    "build:tauri": "pnpm --filter web tauri build",
+    "build:tauri": "pnpm --filter web tauri:build",
+    "typecheck": "pnpm -r typecheck",
     "deploy:api": "pnpm --filter api deploy",
     "deploy:web": "pnpm --filter web deploy",
     "db:migrate": "pnpm --filter api db:migrate",
+    "db:migrate:local": "pnpm --filter api db:migrate:local",
     "db:sync": "pnpm --filter api db:sync"
   },
   "devDependencies": {
+    "concurrently": "^8.2.0",
     "turbo": "^2.0.0"
   },
   "packageManager": "pnpm@9.0.0"

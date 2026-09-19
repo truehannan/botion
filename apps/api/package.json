@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --port 8787",
-    "build": "tsc",
+    "dev": "wrangler dev --port 8787 --local",
+    "build": "tsc --noEmit",
     "deploy": "wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply botion-db",
     "db:migrate:local": "wrangler d1 migrations apply botion-db --local",
-    "db:sync": "node scripts/db-sync.js"
+    "db:sync": "node scripts/db-sync.js",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "hono": "^4.4.0",

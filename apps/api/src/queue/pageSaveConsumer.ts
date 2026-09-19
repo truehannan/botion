@@ -1,4 +1,4 @@
-import type { MessageBatch, D1Database, VectorizeIndex } from '@cloudflare/workers-types';
+import type { MessageBatch, D1Database, VectorizeIndex, Ai } from '@cloudflare/workers-types';
 
 interface PageSaveMessage {
   pageId: string;
@@ -9,21 +9,23 @@ interface PageSaveMessage {
   updatedAt?: number;
 }
 
-export async function handlePageSaveQueue(
-  batch: MessageBatch<PageSaveMessage>,
-  env: { DB: D1Database; AI: any; VECTOR_INDEX: VectorizeIndex }
-) {
+interface Env {
+  DB: D1Database;
+  AI: Ai;
+  VECTOR_INDEX: VectorizeIndex;
+}
+
+export async function handlePageSaveQueue(batch: MessageBatch<PageSaveMessage>, env: Env) {
   for (const message of batch.messages) {
     const { pageId, workspaceId, title, content } = message.body;
 
-    // Build chunks to embed
     const textToEmbed = content ? `${title}\n${content}` : title;
     const chunks = chunkText(textToEmbed, 512);
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       const embedding = await env.AI.run('@cf/baai/bge-base-en-v1.5', { text: chunk });
-      const vec = (embedding as any).data[0] as number[];
+      const vec = (embedding as { data: number[][] }).data[0];
 
       await env.VECTOR_INDEX.upsert([
         {

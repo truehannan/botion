@@ -1,6 +1,18 @@
-import type { D1Database, R2Bucket, VectorizeIndex, Queue, DurableObjectNamespace, Ai } from '@cloudflare/workers-types';
+import type {
+  D1Database,
+  R2Bucket,
+  VectorizeIndex,
+  Queue,
+  DurableObjectNamespace,
+  Ai,
+} from '@cloudflare/workers-types';
+
 import type { BotionSyncRoom } from './durable-objects/BotionSyncRoom';
 
+/**
+ * Hono environment types. All Cloudflare bindings are injected
+ * via `env` at runtime — zero Node.js dependencies.
+ */
 export type AppEnv = {
   Bindings: {
     DB: D1Database;
@@ -21,6 +33,7 @@ export type UserRow = {
   id: string;
   email: string;
   name: string | null;
+  password_hash: string;
   avatar_url: string | null;
   created_at: number;
   updated_at: number;

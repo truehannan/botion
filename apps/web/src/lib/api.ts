@@ -1,16 +1,35 @@
 import { useAuthStore } from '@/stores/authStore';
 
-function getServerUrl(): string {
+/**
+ * API base URL:
+ *   • Dev (Vite):  /api  (proxied to local Worker on :8787)
+ *   • Prod:        VITE_API_URL env var (e.g. https://botion-api.your-account.workers.dev)
+ *   • Native:      botion_server_url from localStorage
+ */
+function getBaseUrl(): string {
+  // Native app override (Tauri)
   const native = localStorage.getItem('botion_server_url');
-  if (native) return native;
-  return import.meta.env.VITE_API_URL || '';
+  if (native) {
+    const url = native.endsWith('/') ? native.slice(0, -1) : native;
+    return url;
+  }
+
+  // Production build
+  const prod = import.meta.env.VITE_API_URL;
+  if (prod) {
+    return prod.endsWith('/') ? prod.slice(0, -1) : prod;
+  }
+
+  // Vite dev proxy
+  return '/api';
 }
 
 async function fetchApi(path: string, options?: RequestInit) {
   const token = useAuthStore.getState().token;
-  const serverUrl = getServerUrl();
-  const base = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
-  const res = await fetch(`${base}${path}`, {
+  const base = getBaseUrl();
+  const url = `${base}${path}`;
+
+  const res = await fetch(url, {
     ...options,
     headers: {
       ...(options?.headers ?? {}),
@@ -20,7 +39,7 @@ async function fetchApi(path: string, options?: RequestInit) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Request failed' }));
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
     throw new Error(err.error || `HTTP ${res.status}`);
   }
 
@@ -50,28 +69,23 @@ export const api = {
     get: (id: string) => fetchApi(`/pages/${id}`),
     create: (data: { workspace_id: string; parent_id?: string | null; title?: string; is_folder?: boolean }) =>
       fetchApi('/pages', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<{ title: string; parent_id: string | null; icon: string; cover_image: string; sort_order: number }>) =>
-      fetchApi(`/pages/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    update: (id: string, data: any) => fetchApi(`/pages/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) => fetchApi(`/pages/${id}`, { method: 'DELETE' }),
   },
   mcp: {
     chat: (messages: any[], workspaceId: string) =>
-      fetchApi('/api/mcp/chat', { method: 'POST', body: JSON.stringify({ messages, workspaceId }) }),
+      fetchApi('/mcp/chat', { method: 'POST', body: JSON.stringify({ messages, workspaceId }) }),
   },
   backlinks: {
-    list: (targetPageId: string) =>
-      fetchApi(`/backlinks?target_page_id=${targetPageId}`),
-    create: (data: { source_page_id: string; target_page_id: string; block_id?: string; context?: string }) =>
-      fetchApi('/backlinks', { method: 'POST', body: JSON.stringify(data) }),
+    list: (targetPageId: string) => fetchApi(`/backlinks?target_page_id=${targetPageId}`),
+    create: (data: any) => fetchApi('/backlinks', { method: 'POST', body: JSON.stringify(data) }),
   },
   databases: {
     list: (parentPageId: string) => fetchApi(`/databases?parent_page_id=${parentPageId}`),
-    create: (data: { parent_page_id: string; name?: string }) =>
-      fetchApi('/databases', { method: 'POST', body: JSON.stringify(data) }),
+    create: (data: any) => fetchApi('/databases', { method: 'POST', body: JSON.stringify(data) }),
     delete: (id: string) => fetchApi(`/databases/${id}`, { method: 'DELETE' }),
   },
   properties: {
-    list: (databaseId: string) => fetchApi(`/properties?database_id=${databaseId}`),
     create: (data: any) => fetchApi('/properties', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: any) => fetchApi(`/properties/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) => fetchApi(`/properties/${id}`, { method: 'DELETE' }),
@@ -82,8 +96,7 @@ export const api = {
       pageIds.forEach((id) => params.append('page_id', id));
       return fetchApi(`/property-values?${params}`);
     },
-    upsert: (data: { property_id: string; page_id: string; value: any }) =>
-      fetchApi('/property-values', { method: 'POST', body: JSON.stringify(data) }),
+    upsert: (data: any) => fetchApi('/property-values', { method: 'POST', body: JSON.stringify(data) }),
   },
   views: {
     create: (data: any) => fetchApi('/views', { method: 'POST', body: JSON.stringify(data) }),
