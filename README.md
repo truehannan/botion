@@ -18,72 +18,68 @@ Edge-native, real-time collaborative workspace. Entirely serverless on Cloudflar
 
 ```
 botion/
-├── apps/
-│   ├── api/                  # Hono Worker
-│   │   ├── src/
-│   │   │   ├── index.ts          # Worker entry (fetch + queue)
-│   │   │   ├── auth.ts           # JWT auth + middleware
-│   │   │   ├── db.ts             # D1 wrapper (zero Node.js)
-│   │   │   ├── types.ts          # Hono Env types
-│   │   │   ├── durable-objects/
-│   │   │   │   └── BotionSyncRoom.ts   # DO hibernation + Yjs
-│   │   │   ├── queue/
-│   │   │   │   └── pageSaveConsumer.ts # Embedding pipeline
-│   │   │   └── routes/
-│   │   │       ├── auth.ts
-│   │   │       ├── workspaces.ts
-│   │   │       ├── pages.ts
-│   │   │       ├── databases.ts
-│   │   │       ├── properties.ts
-│   │   │       ├── propertyValues.ts
-│   │   │       ├── views.ts
-│   │   │       ├── backlinks.ts
-│   │   │       ├── settings.ts
-│   │   │       └── mcp.ts
-│   │   ├── migrations/
-│   │   │   ├── 0001_init.sql
-│   │   │   └── 0002_database_engine.sql
-│   │   ├── schema.sql            # Canonical schema (db-sync source)
-│   │   ├── scripts/
-│   │   │   └── db-sync.js        # Auto-generate D1 migrations
-│   │   ├── wrangler.toml         # Worker config (DO, D1, R2, Queue, AI)
-│   │   └── package.json
-│   └── web/                  # Vite React app
-│       ├── src/
-│       │   ├── main.tsx
-│       │   ├── App.tsx
-│       │   ├── index.css
-│       │   ├── blocks/           # Custom BlockNote blocks
-│       │   ├── components/
-│       │   ├── components/views/ # Database views (Table, Board, Gallery...)
-│       │   ├── components/database/
-│       │   ├── stores/
-│       │   ├── themes/
-│       │   ├── lib/
-│       │   └── hooks/
-│       ├── src-tauri/            # Tauri v2 native wrapper
-│       ├── public/
-│       ├── index.html
-│       ├── vite.config.ts        # With @ alias + /api proxy
-│       ├── tailwind.config.js
-│       ├── postcss.config.js
-│       ├── wrangler.toml         # Pages config
-│       └── package.json
-├── .github/
-│   └── workflows/
-│       ├── deploy.yml          # Deploy Worker + Pages on push
-│       └── release.yml       # Build Tauri binaries on tags
-├── package.json                # Root monorepo config
+├── wrangler.toml          # Worker config (at root)
+├── package.json           # Root monorepo scripts
 ├── pnpm-workspace.yaml
+├── src/
+│   └── index.ts           # Worker entry (Hono app + DO export)
+├── server/
+│   ├── auth.ts            # JWT auth + middleware
+│   ├── db.ts              # D1 wrapper (pure serverless)
+│   ├── types.ts           # Hono Env types
+│   ├── durable-objects/
+│   │   └── BotionSyncRoom.ts
+│   ├── queue/
+│   │   └── pageSaveConsumer.ts
+│   └── routes/
+│       ├── auth.ts
+│       ├── workspaces.ts
+│       ├── pages.ts
+│       ├── databases.ts
+│       ├── properties.ts
+│       ├── propertyValues.ts
+│       ├── views.ts
+│       ├── backlinks.ts
+│       ├── settings.ts
+│       └── mcp.ts
+├── client/
+│   ├── src/
+│   │   ├── main.tsx
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   ├── blocks/        # Custom BlockNote blocks
+│   │   ├── components/
+│   │   ├── components/views
+│   │   ├── components/database
+│   │   ├── stores/
+│   │   ├── themes/
+│   │   └── lib/
+│   ├── public/
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── tailwind.config.js
+│   ├── postcss.config.js
+│   ├── wrangler.toml      # Pages config
+│   └── package.json
+├── migrations/
+│   ├── 0001_init.sql
+│   ├── 0002_database_engine.sql
+│   ├── schema.sql         # Canonical schema (db-sync source)
+│   └── scripts/
+│       └── db-sync.js     # Auto-generate D1 migrations
+├── .github/workflows/
+│   ├── deploy.yml         # Deploy Worker + Pages on push to main
+│   └── release.yml        # Build Tauri binaries on tags
+├── public/
 └── README.md
 ```
 
 ## Prerequisites
 
-- Node.js 20+ (managed via `.nvmrc` if present)
+- Node.js 20+
 - [pnpm](https://pnpm.io/) 9+
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
-- (Optional) [Rust](https://rustup.rs/) + [Tauri prerequisites](https://tauri.app/start/prerequisites/) for native builds
+- (Optional) [Rust](https://rustup.rs/) + [Tauri prerequisites](https://tauri.app/start/prerequisites/)
 
 ## Setup
 
@@ -95,20 +91,18 @@ pnpm install
 
 ### 2. Configure Cloudflare resources
 
-Create these resources in your Cloudflare dashboard, then update IDs in `apps/api/wrangler.toml`:
-
 ```bash
-cd apps/api
 npx wrangler d1 create botion-db
 npx wrangler r2 bucket create botion-storage
 npx wrangler vectorize create botion-vectors --dimensions=768 --metric=cosine
 npx wrangler queues create page-save-queue
 ```
 
+Then fill the generated IDs into `wrangler.toml`.
+
 ### 3. Set secrets
 
 ```bash
-cd apps/api
 npx wrangler secret put JWT_SECRET
 ```
 
@@ -117,11 +111,8 @@ npx wrangler secret put JWT_SECRET
 ```bash
 pnpm db:migrate:local   # local dev
 pnpm db:migrate         # production
-```
 
-The `db:sync` script auto-generates missing migrations from `schema.sql`:
-
-```bash
+# Or auto-generate from schema.sql:
 pnpm db:sync
 ```
 
@@ -129,15 +120,15 @@ pnpm db:sync
 
 Terminal 1 — Worker (http://127.0.0.1:8787):
 ```bash
-pnpm dev:api
+pnpm dev:worker
 ```
 
 Terminal 2 — Web app (http://localhost:5173):
 ```bash
-pnpm dev:web
+pnpm dev:client
 ```
 
-Vite proxies `/api/*` → `127.0.0.1:8787` with path rewrite (strips `/api` prefix). WebSockets are also proxied (`ws: true`).
+Vite proxies `/api/*` → `127.0.0.1:8787` and strips the `/api` prefix before forwarding.
 
 ### 6. Native app (Tauri)
 
@@ -145,61 +136,37 @@ Vite proxies `/api/*` → `127.0.0.1:8787` with path rewrite (strips `/api` pref
 pnpm dev:tauri
 ```
 
-When opening the native app for the first time, enter your Worker URL (e.g. `https://botion-api.your-account.workers.dev`) and credentials.
-
 ## Environment Variables
 
-Create `apps/web/.env.local` for production API target:
+Create `client/.env.local` for production:
 
 ```
 VITE_API_URL=https://botion-api.your-account.workers.dev
 VITE_WS_URL=wss://botion-api.your-account.workers.dev
 ```
 
-In dev, `VITE_API_URL` is omitted; Vite's proxy handles routing automatically.
-
 ## Deployment
 
-### GitHub Actions
+The `deploy.yml` workflow triggers on every push to `main`:
+- Builds + type-checks Worker & client
+- Deploys Worker via `cloudflare/wrangler-action@v3`
+- Deploys Pages via `cloudflare/wrangler-action@v3`
 
-The `deploy.yml` workflow runs on every push to `main`:
-- Builds + type-checks the Worker
-- Builds the Pages frontend
-- Deploys both via `cloudflare/wrangler-action@v3`
+Required secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
 
-Required repository secrets:
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
-
-### Manual deployment
-
-```bash
-# Worker
-pnpm deploy:api
-
-# Pages
-pnpm deploy:web
-```
-
-### Native releases
-
-Tag a release to trigger Tauri builds for all platforms:
+Tag a release to trigger Tauri builds:
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The `release.yml` workflow attaches `.exe`, `.msi`, `.dmg`, `.deb`, `.AppImage`, `.apk`, and `.aab` to the GitHub Release.
-
 ## Serverless Compliance
 
 All backend code runs strictly inside Cloudflare V8 isolates:
 
-- **No Node.js APIs** in runtime code (no `fs`, `path`, `http`, `process`)
-- **Web Crypto** for JWT signing (`jose` via `crypto.subtle`)
-- **D1** for all relational state (SQLite)
-- **Durable Objects** with WebSocket Hibernation (`this.ctx.acceptWebSocket`)
-- **Yjs** runs entirely in-memory inside the DO; no external state
-- **Queue consumer** runs inside the same Worker isolate
-- **Workers AI** + **Vectorize** for edge inference & RAG
+- No `fs`, `path`, `http`, `process`, `Buffer` in runtime code
+- `crypto.randomUUID()` and `crypto.subtle.digest()` — Web Crypto
+- `jose` v5 — pure Web Crypto
+- `yjs` — pure JS, runs in DO isolate
+- `zod` — pure JS

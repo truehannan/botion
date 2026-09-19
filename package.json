@@ -4,24 +4,31 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"pnpm dev:api\" \"pnpm dev:web\"",
-    "dev:api": "pnpm --filter api dev",
-    "dev:web": "pnpm --filter web dev",
-    "dev:tauri": "pnpm --filter web tauri:dev",
+    "dev": "concurrently \"pnpm dev:worker\" \"pnpm dev:client\"",
+    "dev:worker": "wrangler dev --port 8787 --local",
+    "dev:client": "pnpm --filter client dev",
+    "dev:tauri": "pnpm --filter client tauri:dev",
     "build": "pnpm -r build",
-    "build:api": "pnpm --filter api build",
-    "build:web": "pnpm --filter web build",
-    "build:tauri": "pnpm --filter web tauri:build",
-    "typecheck": "pnpm -r typecheck",
-    "deploy:api": "pnpm --filter api deploy",
-    "deploy:web": "pnpm --filter web deploy",
-    "db:migrate": "pnpm --filter api db:migrate",
-    "db:migrate:local": "pnpm --filter api db:migrate:local",
-    "db:sync": "pnpm --filter api db:sync"
+    "build:client": "pnpm --filter client build",
+    "build:tauri": "pnpm --filter client tauri:build",
+    "typecheck": "tsc --noEmit -p server/tsconfig.json && pnpm --filter client typecheck",
+    "deploy:worker": "wrangler deploy",
+    "deploy:client": "pnpm --filter client deploy",
+    "db:migrate": "wrangler d1 migrations apply botion-db",
+    "db:migrate:local": "wrangler d1 migrations apply botion-db --local",
+    "db:sync": "node migrations/scripts/db-sync.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
-    "turbo": "^2.0.0"
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0",
+    "wrangler": "^3.60.0"
+  },
+  "dependencies": {
+    "hono": "^4.4.0",
+    "jose": "^5.4.0",
+    "yjs": "^13.6.0",
+    "zod": "^3.23.0"
   },
   "packageManager": "pnpm@9.0.0"
 }

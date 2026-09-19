@@ -7,10 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ──────────────────────────────────────────────────
-  # 1. Build Cloudflare Pages (static)
-  # ──────────────────────────────────────────────────
-  build-web:
+  build-client:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,17 +19,14 @@ jobs:
           node-version: 20
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter web build
+      - run: pnpm build:client
       - uses: actions/upload-artifact@v4
         with:
-          name: web-dist
-          path: apps/web/dist
+          name: client-dist
+          path: client/dist
           retention-days: 1
 
-  # ──────────────────────────────────────────────────
-  # 2. Build Worker
-  # ──────────────────────────────────────────────────
-  build-api:
+  typecheck-worker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,11 +38,8 @@ jobs:
           node-version: 20
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter api build
+      - run: pnpm typecheck
 
-  # ──────────────────────────────────────────────────
-  # 3. Build native binaries (Tauri)
-  # ──────────────────────────────────────────────────
   build-native:
     permissions:
       contents: write
@@ -91,10 +82,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          projectPath: apps/web
+          projectPath: client
           tagName: botion-v__VERSION__
           releaseName: 'Botion v__VERSION__'
-          releaseBody: 'See the assets to download native binaries.'
+          releaseBody: 'See assets to download native binaries.'
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
