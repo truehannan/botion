@@ -7,20 +7,20 @@
     "dev": "concurrently \"pnpm dev:worker\" \"pnpm dev:client\"",
     "dev:worker": "wrangler dev --port 8787 --local",
     "dev:client": "pnpm --filter client dev",
-    "dev:tauri": "pnpm --filter client tauri:dev",
-    "build": "pnpm -r build",
+    "dev:tauri": "pnpm --filter client tauri dev",
     "build:client": "pnpm --filter client build",
-    "build:tauri": "pnpm --filter client tauri:build",
-    "typecheck": "tsc --noEmit -p server/tsconfig.json && pnpm --filter client typecheck",
+    "build:tauri": "pnpm --filter client tauri build",
+    "typecheck": "tsc --noEmit && pnpm --filter client typecheck",
     "deploy:worker": "wrangler deploy",
-    "deploy:client": "pnpm --filter client deploy",
+    "deploy:client": "wrangler pages deploy client/dist --project-name=botion-web",
     "db:migrate": "wrangler d1 migrations apply botion-db",
     "db:migrate:local": "wrangler d1 migrations apply botion-db --local",
-    "db:sync": "node migrations/scripts/db-sync.js"
+    "db:sync": "node scripts/db-sync.js",
+    "setup": "node scripts/setup.js",
+    "provision": "node scripts/provision.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
-    "turbo": "^2.0.0",
     "typescript": "^5.4.0",
     "wrangler": "^3.60.0"
   },

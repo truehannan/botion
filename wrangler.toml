@@ -1,26 +1,36 @@
-## Botion API — Cloudflare Worker (Hono)
-## Fill in IDs after creating resources with wrangler CLI.
+# Botion — Cloudflare Worker (Hono)
+# Run `wrangler dev` to start locally, `wrangler deploy` to publish.
 
 name = "botion-api"
 main = "src/index.ts"
 compatibility_date = "2024-06-20"
 workers_dev = true
 
+# Build step: wrangler runs this before bundling the Worker.
+# The worker code is pure TS; this just type-checks.
+[build]
+command = "npx tsc --noEmit"
+
 [vars]
 ENVIRONMENT = "development"
 
-# ━━ D1 (SQLite) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ━━ Secrets (set via `wrangler secret put`) ━━━━━━━━━━━━━━━━━━━━━━
+# JWT_SECRET   – HS256 key for auth tokens
+
+# ━━ D1 (SQLite) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Create:   wrangler d1 create botion-db
+# Migrate:  wrangler d1 migrations apply botion-db
 [[d1_databases]]
 binding = "DB"
 database_name = "botion-db"
-# database_id = "<fill after wrangler d1 create>"
 
 # ━━ R2 (Object Storage) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Create: wrangler r2 bucket create botion-storage
 [[r2_buckets]]
 binding = "STORAGE"
 bucket_name = "botion-storage"
 
-# ━━ Durable Objects (WebSocket Hibernation) ━━━━━━━━━━━━━━━━━━━━━
+# ━━ Durable Objects (WebSocket Hibernation) ━━━━━━━━━━━━━━━━━━━━━━━━
 [[durable_objects.bindings]]
 name = "BOTION_SYNC_ROOM"
 class_name = "BotionSyncRoom"
@@ -30,6 +40,7 @@ tag = "v1"
 new_classes = ["BotionSyncRoom"]
 
 # ━━ Queues ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Create: wrangler queues create page-save-queue
 [[queues.producers]]
 binding = "PAGE_SAVE_QUEUE"
 queue = "page-save-queue"
@@ -39,11 +50,12 @@ queue = "page-save-queue"
 max_batch_size = 10
 max_batch_timeout = 30
 
-# ━━ Vectorize (RAG) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ━━ Vectorize (RAG) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Create: wrangler vectorize create botion-vectors --dimensions=768 --metric=cosine
 [[vectorize]]
 binding = "VECTOR_INDEX"
 index_name = "botion-vectors"
 
-# ━━ Workers AI ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ━━ Workers AI ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [ai]
 binding = "AI"
