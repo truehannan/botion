@@ -1,9 +1,20 @@
 import { useEffect, useState } from 'react';
 import { AuthPage } from './components/AuthPage';
+import { NativeAuthScreen } from './components/NativeAuthScreen';
 import { Layout } from './components/Layout';
 import { useAuthStore } from './stores/authStore';
 import { useUIStore } from './stores/uiStore';
 import { api } from './lib/api';
+
+function isTauri(): boolean {
+  return !!window.__TAURI__;
+}
+
+declare global {
+  interface Window {
+    __TAURI__?: any;
+  }
+}
 
 function App() {
   const token = useAuthStore((s) => s.token);
@@ -19,14 +30,13 @@ function App() {
           const res = await api.auth.me();
           if (res.user) {
             setAuth(token, res.user);
-            // Load first workspace
             const ws = await api.workspaces.list();
             if (ws.workspaces?.length > 0) {
               setActiveWorkspaceId(ws.workspaces[0].id);
             }
           }
         } catch {
-          // Token invalid, ignore
+          // Token invalid
         }
       }
       setLoading(false);
@@ -43,6 +53,9 @@ function App() {
   }
 
   if (!user) {
+    if (isTauri()) {
+      return <NativeAuthScreen />;
+    }
     return <AuthPage />;
   }
 

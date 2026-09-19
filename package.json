@@ -6,11 +6,14 @@
   "scripts": {
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",
+    "dev:tauri": "pnpm --filter web tauri dev",
     "build:api": "pnpm --filter api build",
     "build:web": "pnpm --filter web build",
+    "build:tauri": "pnpm --filter web tauri build",
     "deploy:api": "pnpm --filter api deploy",
     "deploy:web": "pnpm --filter web deploy",
-    "db:migrate": "pnpm --filter api db:migrate"
+    "db:migrate": "pnpm --filter api db:migrate",
+    "db:sync": "pnpm --filter api db:sync"
   },
   "devDependencies": {
     "turbo": "^2.0.0"

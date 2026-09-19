@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { api } from '@/lib/api';
 import { Logo } from './Logo';
+import { ThemeToggle } from '@/themes/Toggle';
+import { MentionsModal } from './MentionsModal';
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,7 +12,6 @@ import {
   Folder,
   FolderOpen,
   Plus,
-  Settings,
   LogOut,
   ChevronDown,
   ChevronRightIcon,
@@ -23,6 +24,7 @@ interface PageNode {
   is_folder: boolean;
   parent_id?: string | null;
   icon?: string | null;
+  sort_order: number;
   children?: PageNode[];
 }
 
@@ -40,15 +42,29 @@ function buildTree(pages: PageNode[]): PageNode[] {
       const parent = map.get(p.parent_id)!;
       if (!parent.children) parent.children = [];
       parent.children.push(node);
+      parent.children.sort((a, b) => a.sort_order - b.sort_order);
     } else {
       roots.push(node);
     }
   }
 
+  roots.sort((a, b) => a.sort_order - b.sort_order);
   return roots;
 }
 
-function PageItem({ page, depth = 0 }: { page: PageNode; depth?: number }) {
+function PageItem({
+  page,
+  depth = 0,
+  onDragStart,
+  onDragOver,
+  onDrop,
+}: {
+  page: PageNode;
+  depth?: number;
+  onDragStart?: (id: string) => void;
+  onDragOver?: (id: string) => void;
+  onDrop?: (id: string) => void;
+}) {
   const selectedPageId = useUIStore((s) => s.selectedPageId);
   const setSelectedPageId = useUIStore((s) => s.setSelectedPageId);
   const [expanded, setExpanded] = useState(true);
@@ -56,21 +72,27 @@ function PageItem({ page, depth = 0 }: { page: PageNode; depth?: number }) {
   const hasChildren = page.children && page.children.length > 0;
 
   return (
-    <div>
+    <div
+      draggable
+      onDragStart={() => onDragStart?.(page.id)}
+      onDragOver={(e) => { e.preventDefault(); onDragOver?.(page.id); }}
+      onDrop={(e) => { e.preventDefault(); onDrop?.(page.id); }}
+    >
       <button
         onClick={() => {
-          if (page.is_folder && hasChildren) {
-            setExpanded((e) => !e);
-          }
+          if (page.is_folder && hasChildren) setExpanded((e) => !e);
           setSelectedPageId(page.id);
         }}
         className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm transition ${
-          isSelected ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-600 hover:bg-neutral-50'
+          isSelected ? 'bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100' : 'text-neutral-600 hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/50'
         }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
         {hasChildren && page.is_folder ? (
-          <span className="text-neutral-400" onClick={(e) => { e.stopPropagation(); setExpanded((e) => !e); }}>
+          <span
+            className="text-neutral-400"
+            onClick={(e) => { e.stopPropagation(); setExpanded((e) => !e); }}
+          >
             {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRightIcon className="h-3.5 w-3.5" />}
           </span>
         ) : (
@@ -87,13 +109,20 @@ function PageItem({ page, depth = 0 }: { page: PageNode; depth?: number }) {
           <FileText className="h-3.5 w-3.5 text-neutral-400" />
         )}
 
-        <span className="truncate">{page.title}</span>
+        <span className="truncate">{page.icon} {page.title}</span>
       </button>
 
       {expanded && hasChildren && (
         <div>
           {page.children!.map((child) => (
-            <PageItem key={child.id} page={child} depth={depth + 1} />
+            <PageItem
+              key={child.id}
+              page={child}
+              depth={depth + 1}
+              onDragStart={onDragStart}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+            />
           ))}
         </div>
       )}
@@ -111,6 +140,8 @@ export function Sidebar() {
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
   const [workspaceName, setWorkspaceName] = useState('Workspace');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activeWorkspaceId) return;
@@ -133,39 +164,69 @@ export function Sidebar() {
     if (res.page) addPage(res.page);
   };
 
+  const handleDrop = useCallback(
+    async (targetId: string) => {
+      if (!dragId || dragId === targetId) return;
+      const draggedPage = pages.find((p) => p.id === dragId);
+      if (!draggedPage) return;
+
+      // Move under target as child if target is folder, else move to target's parent
+      const targetPage = pages.find((p) => p.id === targetId);
+      const newParentId = targetPage?.is_folder ? targetId : targetPage?.parent_id ?? null;
+
+      await api.pages.update(dragId, { parent_id: newParentId });
+      setPages(
+        pages.map((p) =>
+          p.id === dragId ? { ...p, parent_id: newParentId } : p
+        )
+      );
+      setDragId(null);
+    },
+    [dragId, pages, setPages]
+  );
+
   const tree = buildTree(pages);
 
   return (
     <>
       <aside
-        className={`flex flex-col border-r border-neutral-100 bg-white transition-all duration-200 ${
+        className={`flex flex-col border-r border-neutral-100 bg-white transition-all duration-200 dark:border-neutral-800 dark:bg-neutral-950 ${
           sidebarOpen ? 'w-64 min-w-[16rem]' : 'w-0 overflow-hidden opacity-0'
         }`}
       >
         <div className="flex items-center gap-2 px-3 py-3">
-          <Logo className="h-6 w-6 text-neutral-900" />
+          <Logo className="h-6 w-6 text-neutral-900 dark:text-neutral-100" />
           <span className="flex-1 truncate text-sm font-semibold">{workspaceName}</span>
-          <button onClick={toggleSidebar} className="rounded p-1 text-neutral-400 hover:bg-neutral-100">
+          <ThemeToggle />
+          <button onClick={toggleSidebar} className="rounded p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">
             <ChevronLeft className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="mx-3 mb-2 flex items-center gap-2 rounded-md bg-neutral-50 px-2 py-1.5 text-xs text-neutral-400">
+        <div
+          onClick={() => setSearchOpen(true)}
+          className="mx-3 mb-2 flex cursor-pointer items-center gap-2 rounded-md bg-neutral-50 px-2 py-1.5 text-xs text-neutral-400 transition hover:bg-neutral-100 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+        >
           <Search className="h-3.5 w-3.5" />
           <span className="flex-1">Search</span>
-          <kbd className="rounded border border-neutral-200 bg-white px-1 font-mono text-[10px]">⌘K</kbd>
+          <kbd className="rounded border border-neutral-200 bg-white px-1 font-mono text-[10px] dark:border-neutral-700 dark:bg-neutral-800">⌘K</kbd>
         </div>
 
         <div className="flex flex-1 flex-col gap-0.5 overflow-auto px-1 py-1">
           {tree.map((page) => (
-            <PageItem key={page.id} page={page} />
+            <PageItem
+              key={page.id}
+              page={page}
+              onDragStart={setDragId}
+              onDrop={handleDrop}
+            />
           ))}
         </div>
 
-        <div className="mt-auto border-t border-neutral-100 p-2">
+        <div className="mt-auto border-t border-neutral-100 p-2 dark:border-neutral-800">
           <button
             onClick={handleNewPage}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-600 transition hover:bg-neutral-50"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-600 transition hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/50"
           >
             <Plus className="h-3.5 w-3.5" />
             New page
@@ -173,16 +234,14 @@ export function Sidebar() {
 
           <div className="mt-1 flex items-center gap-2 rounded-md px-2 py-1.5">
             {user?.name ? (
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[10px] font-medium text-white">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[10px] font-medium text-white dark:bg-neutral-100 dark:text-neutral-900">
                 {user.name[0]?.toUpperCase()}
               </div>
             ) : (
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-200 text-[10px]">
-                ?
-              </div>
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-200 text-[10px] dark:bg-neutral-700">?</div>
             )}
-            <span className="flex-1 truncate text-xs text-neutral-600">{user?.email}</span>
-            <button onClick={logout} className="rounded p-1 text-neutral-400 hover:bg-neutral-100">
+            <span className="flex-1 truncate text-xs text-neutral-600 dark:text-neutral-400">{user?.email}</span>
+            <button onClick={logout} className="rounded p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">
               <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -192,11 +251,13 @@ export function Sidebar() {
       {!sidebarOpen && (
         <button
           onClick={toggleSidebar}
-          className="fixed left-3 top-3 z-50 rounded-md border border-neutral-100 bg-white p-1.5 shadow-sm text-neutral-500 hover:text-neutral-900"
+          className="fixed left-3 top-3 z-50 rounded-md border border-neutral-100 bg-white p-1.5 shadow-sm text-neutral-500 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:text-neutral-100"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
       )}
+
+      {searchOpen && <MentionsModal onClose={() => setSearchOpen(false)} />}
     </>
   );
 }

@@ -1,10 +1,16 @@
 import { useAuthStore } from '@/stores/authStore';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+function getServerUrl(): string {
+  const native = localStorage.getItem('botion_server_url');
+  if (native) return native;
+  return import.meta.env.VITE_API_URL || '';
+}
 
 async function fetchApi(path: string, options?: RequestInit) {
   const token = useAuthStore.getState().token;
-  const res = await fetch(`${API_BASE}${path}`, {
+  const serverUrl = getServerUrl();
+  const base = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
+  const res = await fetch(`${base}${path}`, {
     ...options,
     headers: {
       ...(options?.headers ?? {}),
@@ -51,5 +57,41 @@ export const api = {
   mcp: {
     chat: (messages: any[], workspaceId: string) =>
       fetchApi('/api/mcp/chat', { method: 'POST', body: JSON.stringify({ messages, workspaceId }) }),
+  },
+  backlinks: {
+    list: (targetPageId: string) =>
+      fetchApi(`/backlinks?target_page_id=${targetPageId}`),
+    create: (data: { source_page_id: string; target_page_id: string; block_id?: string; context?: string }) =>
+      fetchApi('/backlinks', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  databases: {
+    list: (parentPageId: string) => fetchApi(`/databases?parent_page_id=${parentPageId}`),
+    create: (data: { parent_page_id: string; name?: string }) =>
+      fetchApi('/databases', { method: 'POST', body: JSON.stringify(data) }),
+    delete: (id: string) => fetchApi(`/databases/${id}`, { method: 'DELETE' }),
+  },
+  properties: {
+    list: (databaseId: string) => fetchApi(`/properties?database_id=${databaseId}`),
+    create: (data: any) => fetchApi('/properties', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: any) => fetchApi(`/properties/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) => fetchApi(`/properties/${id}`, { method: 'DELETE' }),
+  },
+  propertyValues: {
+    list: (pageIds: string[]) => {
+      const params = new URLSearchParams();
+      pageIds.forEach((id) => params.append('page_id', id));
+      return fetchApi(`/property-values?${params}`);
+    },
+    upsert: (data: { property_id: string; page_id: string; value: any }) =>
+      fetchApi('/property-values', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  views: {
+    create: (data: any) => fetchApi('/views', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: any) => fetchApi(`/views/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) => fetchApi(`/views/${id}`, { method: 'DELETE' }),
+  },
+  settings: {
+    get: () => fetchApi('/settings'),
+    update: (data: any) => fetchApi('/settings', { method: 'PUT', body: JSON.stringify(data) }),
   },
 };

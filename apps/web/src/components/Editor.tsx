@@ -1,34 +1,39 @@
-import { useEffect, useMemo, useState } from 'react';
-import { BlockNoteView, useCreateBlockNote } from '@blocknote/mantine';
-import { SuggestionMenuController, getDefaultReactSlashMenuItems } from '@blocknote/react';
+import { useEffect, useMemo } from 'react';
+import { BlockNoteView } from '@blocknote/mantine';
+import { SuggestionMenuController } from '@blocknote/react';
+import { useCreateBlockNote } from '@blocknote/core';
 import { useUIStore } from '@/stores/uiStore';
 import { createYjsProvider } from '@/lib/yjsProvider';
 import * as Y from 'yjs';
 import '@blocknote/mantine/style.css';
 import { InlineAIWidget } from './InlineAIWidget';
+import { BacklinksFooter } from './BacklinksFooter';
 import { getCustomSlashMenuItems } from './SlashMenu';
+import { MentionSuggestionMenu } from './MentionSuggestionMenu';
+import { schema } from '@/blocks/schema';
 
 export function Editor() {
   const selectedPageId = useUIStore((s) => s.selectedPageId);
   const inlineAIOpen = useUIStore((s) => s.inlineAIOpen);
 
   const doc = useMemo(() => new Y.Doc(), [selectedPageId]);
-
-  // Create Yjs provider synchronously so BlockNote collaboration is ready at mount
   const provider = useMemo(() => {
     if (!selectedPageId) return null;
     return createYjsProvider(selectedPageId, doc, () => {});
   }, [selectedPageId, doc]);
 
-  const editor = useCreateBlockNote({
-    collaboration: provider
-      ? {
-          provider: provider as any,
-          fragment: doc.getXmlFragment('document-store'),
-          user: { name: 'User', color: '#2563eb' },
-        }
-      : undefined,
-  });
+  const editor = useCreateBlockNote(
+    {
+      schema,
+      collaboration: provider
+        ? {
+            provider: provider as any,
+            fragment: doc.getXmlFragment('document-store'),
+            user: { name: 'User', color: '#2563eb' },
+          }
+        : undefined,
+    },
+  );
 
   useEffect(() => {
     return () => {
@@ -49,7 +54,7 @@ export function Editor() {
       <div className="mx-auto w-full max-w-3xl px-12 py-12">
         <BlockNoteView
           editor={editor}
-          className="prose prose-neutral max-w-none"
+          className="prose prose-neutral max-w-none dark:prose-invert"
         >
           <SuggestionMenuController
             triggerCharacter="/"
@@ -62,6 +67,25 @@ export function Editor() {
                 .slice(0, 10)
             }
           />
+          <SuggestionMenuController
+            triggerCharacter="@"
+            getItems={async (query) => []}
+            suggestionMenuComponent={({ query, closeMenu }) => (
+              <MentionSuggestionMenu
+                query={query ?? ''}
+                onSelect={(item) => {
+                  editor.insertInlineContent([
+                    {
+                      type: 'mention',
+                      props: { pageId: item.id },
+                      content: [{ type: 'text', text: item.title, styles: {} }],
+                    },
+                  ]);
+                  closeMenu?.();
+                }}
+              />
+            )}
+          />
         </BlockNoteView>
 
         {inlineAIOpen && (
@@ -69,6 +93,8 @@ export function Editor() {
             <InlineAIWidget />
           </div>
         )}
+
+        <BacklinksFooter />
       </div>
     </div>
   );

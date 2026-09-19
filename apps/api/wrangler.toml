@@ -9,7 +9,7 @@ ENVIRONMENT = "development"
 [[d1_databases]]
 binding = "DB"
 database_name = "botion-db"
-database_id = "your-d1-database-id"
+# database_id is auto-resolved via name by pre-build script
 
 [[r2_buckets]]
 binding = "STORAGE"

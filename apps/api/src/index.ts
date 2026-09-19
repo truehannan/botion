@@ -5,6 +5,12 @@ import authRoutes from './auth';
 import workspaceRoutes from './routes/workspaces';
 import pageRoutes from './routes/pages';
 import mcpRoutes from './routes/mcp';
+import databaseRoutes from './routes/databases';
+import propertyRoutes from './routes/properties';
+import propertyValueRoutes from './routes/propertyValues';
+import viewRoutes from './routes/views';
+import backlinkRoutes from './routes/backlinks';
+import settingsRoutes from './routes/settings';
 import { BotionSyncRoom } from './durable-objects/BotionSyncRoom';
 import { handlePageSaveQueue } from './queue/pageSaveConsumer';
 import type { AppEnv } from './types';
@@ -21,6 +27,12 @@ app.get('/health', (c) => c.json({ ok: true }));
 app.route('/auth', authRoutes);
 app.route('/workspaces', workspaceRoutes);
 app.route('/pages', pageRoutes);
+app.route('/databases', databaseRoutes);
+app.route('/properties', propertyRoutes);
+app.route('/property-values', propertyValueRoutes);
+app.route('/views', viewRoutes);
+app.route('/backlinks', backlinkRoutes);
+app.route('/settings', settingsRoutes);
 app.route('/api/mcp', mcpRoutes);
 
 // Queue handler
