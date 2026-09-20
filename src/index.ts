@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ExecutionContext } from '@cloudflare/workers-types';
 
+import { ensureSchema } from '../server/local-init';
 import { authMiddleware } from '../server/auth';
 import authRoutes from '../server/auth';
 import workspaceRoutes from '../server/routes/workspaces';
@@ -13,6 +14,7 @@ import propertyValueRoutes from '../server/routes/propertyValues';
 import viewRoutes from '../server/routes/views';
 import backlinkRoutes from '../server/routes/backlinks';
 import settingsRoutes from '../server/routes/settings';
+import syncRoutes from '../server/routes/sync';
 import { BotionSyncRoom } from '../server/durable-objects/BotionSyncRoom';
 import { handlePageSaveQueue } from '../server/queue/pageSaveConsumer';
 import type { AppEnv } from '../server/types';
@@ -20,6 +22,15 @@ import type { AppEnv } from '../server/types';
 const app = new Hono<AppEnv>();
 
 app.use('*', cors({ origin: '*', credentials: true }));
+
+// Auto-init schema in local/development mode
+app.use('*', async (c, next) => {
+  if (c.env.ENVIRONMENT === 'development' || c.env.ENVIRONMENT === 'local') {
+    await ensureSchema(c.env.DB);
+  }
+  await next();
+});
+
 app.use('*', authMiddleware);
 
 // Health
@@ -35,6 +46,7 @@ app.route('/property-values', propertyValueRoutes);
 app.route('/views', viewRoutes);
 app.route('/backlinks', backlinkRoutes);
 app.route('/settings', settingsRoutes);
+app.route('/sync', syncRoutes);
 app.route('/mcp', mcpRoutes);
 
 // Worker entry

@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const MIGRATIONS_DIR = join(ROOT, 'migrations');
-const SCHEMA_FILE = join(ROOT, 'migrations', 'schema.sql');
+const SCHEMA_FILE = join(ROOT, 'schema.sql');
 const DB_NAME = 'botion-db';
 
 function getNextMigrationNum() {

@@ -4,9 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "echo 'wrangler handles bundling via esbuild'",
     "dev": "concurrently \"pnpm dev:worker\" \"pnpm dev:client\"",
     "dev:worker": "wrangler dev --port 8787 --local",
     "dev:client": "pnpm --filter client dev",
+    "dev:local": "concurrently \"pnpm dev:worker:local\" \"pnpm dev:client:local\"",
+    "dev:worker:local": "wrangler dev --port 8787 --local --persist-to=.local/state",
+    "dev:client:local": "VITE_LOCAL_MODE=true pnpm --filter client dev",
     "dev:tauri": "pnpm --filter client tauri dev",
     "build:client": "pnpm --filter client build",
     "build:tauri": "pnpm --filter client tauri build",
@@ -17,7 +21,8 @@
     "db:migrate:local": "wrangler d1 migrations apply botion-db --local",
     "db:sync": "node scripts/db-sync.js",
     "setup": "node scripts/setup.js",
-    "provision": "node scripts/provision.js"
+    "provision": "node scripts/provision.js",
+    "test": "node tests/run.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",

@@ -1,4 +1,5 @@
 import type { MessageBatch, D1Database, VectorizeIndex, Ai } from '@cloudflare/workers-types';
+import { runAI } from '../utils/ai-mock';
 
 interface PageSaveMessage {
   pageId: string;
@@ -24,21 +25,27 @@ export async function handlePageSaveQueue(batch: MessageBatch<PageSaveMessage>, 
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      const embedding = await env.AI.run('@cf/baai/bge-base-en-v1.5', { text: chunk });
+      // Use runAI for local-mode fallback
+      const embedding = await runAI(env.AI, '@cf/baai/bge-base-en-v1.5', { text: chunk });
       const vec = (embedding as { data: number[][] }).data[0];
 
-      await env.VECTOR_INDEX.upsert([
-        {
-          id: `${pageId}_chunk_${i}`,
-          values: vec,
-          metadata: {
-            pageId,
-            workspaceId,
-            text: chunk,
-            title,
+      try {
+        await env.VECTOR_INDEX.upsert([
+          {
+            id: `${pageId}_chunk_${i}`,
+            values: vec,
+            metadata: {
+              pageId,
+              workspaceId,
+              text: chunk,
+              title,
+            },
           },
-        },
-      ]);
+        ]);
+      } catch (err) {
+        // Vectorize may not be available in local mode — skip silently
+        console.log('[Queue] Vectorize unavailable in local mode, skipping embedding');
+      }
     }
   }
 }

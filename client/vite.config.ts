@@ -2,32 +2,43 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  const isLocal = process.env.VITE_LOCAL_MODE === 'true';
 
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, 'src'),
-    },
-  },
-
-  server: {
-    port: 5173,
-    proxy: {
-      // Proxy /api/* to the local Hono Worker on :8787.
-      // The path rewrite strips the /api prefix before forwarding.
-      '/api': {
-        target: 'http://127.0.0.1:8787',
-        changeOrigin: true,
-        ws: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src'),
       },
     },
-  },
-
-  build: {
-    outDir: 'dist',
-    sourcemap: true,
-    emptyOutDir: true,
-  },
+    server: {
+      port: 5173,
+      proxy: isLocal
+        ? {
+            '/api': {
+              target: 'http://127.0.0.1:8787',
+              changeOrigin: true,
+              ws: true,
+              rewrite: (path) => path.replace(/^\/api/, ''),
+            },
+          }
+        : {
+            '/api': {
+              target: 'http://127.0.0.1:8787',
+              changeOrigin: true,
+              ws: true,
+              rewrite: (path) => path.replace(/^\/api/, ''),
+            },
+          },
+    },
+    build: {
+      outDir: 'dist',
+      sourcemap: true,
+      emptyOutDir: true,
+    },
+    define: {
+      __LOCAL_MODE__: JSON.stringify(isLocal),
+    },
+  };
 });

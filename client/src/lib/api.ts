@@ -58,6 +58,11 @@ export const api = {
     update: (id: string, data: any) => fetchApi(`/pages/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) => fetchApi(`/pages/${id}`, { method: 'DELETE' }),
   },
+  sync: {
+    post: (pageId: string, body: { blocks: any[]; title?: string; workspaceId?: string }) =>
+      fetchApi(`/sync/${pageId}`, { method: 'POST', body: JSON.stringify(body) }),
+    get: (pageId: string) => fetchApi(`/sync/${pageId}`),
+  },
   mcp: {
     chat: (messages: any[], workspaceId: string) =>
       fetchApi('/mcp/chat', { method: 'POST', body: JSON.stringify({ messages, workspaceId }) }),
