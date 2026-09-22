@@ -125,12 +125,24 @@ npx wrangler vectorize create botion-vectors --dimensions=768 --metric=cosine
 For purely local development you don't need any of this — `wrangler dev --local`
 creates local stand-ins automatically.
 
-### 3. Set secrets
+### 3. Set the JWT secret (once)
+
+`JWT_SECRET` signs auth tokens. Generate it **one time** with the idempotent
+helper — it only sets the secret if one doesn't already exist:
 
 ```bash
-npx wrangler secret put JWT_SECRET   # production runtime secret
-# for local dev, put JWT_SECRET in .dev.vars (see .dev.vars.example)
+pnpm gen:jwt              # sets JWT_SECRET only if not already set
+pnpm gen:jwt -- --print   # just print a fresh 256-bit hex value, set nothing
+pnpm gen:jwt -- --force   # rotate it (see warning below)
 ```
+
+> **It does not "randomize everything."** The script touches only `JWT_SECRET`,
+> and only when it is missing. Re-running it is a no-op. Do **not** put JWT
+> generation in your build/deploy command: rotating the secret invalidates every
+> existing user token and logs everyone out. That's why `--force` is opt-in and
+> generation is a one-time setup step, not part of deploys.
+
+For local dev, put `JWT_SECRET` in `.dev.vars` (see `.dev.vars.example`) instead.
 
 ### 4. Run migrations
 
@@ -179,12 +191,41 @@ process on every push to the production branch:
 
 1. **Build command** — leave empty (or `pnpm install`); the Worker's TS is
    bundled by wrangler at deploy time, so no separate build is needed.
-2. **Deploy command** — `npx wrangler deploy` (the default).
+2. **Deploy command** — `pnpm deploy:worker` (runs `scripts/deploy.js`, which
+   wraps `wrangler deploy`).
 
-Because `wrangler.toml` uses **id-less bindings**, `wrangler deploy` here
-**auto-provisions D1, R2, and the Queue** and links them to the Worker. This
-works with the auto-generated build token — no extra permissions needed for
-those three.
+### Binding the D1 database id (fixes the recurring "database not found")
+
+The D1 binding in `wrangler.toml` has no hardcoded id. You have three ways to
+give the deploy a real id — pick whichever you like:
+
+1. **Pass it in the deploy command (recommended, one time):**
+
+   ```bash
+   pnpm deploy:worker --d1 "<your-d1-database-id>"
+   ```
+
+   `scripts/deploy.js` writes that id into the `[[d1_databases]]` binding, then
+   runs `wrangler deploy`. Cloudflare **links** that database to the Worker, and
+   the link **persists on every future deploy** — so you only need `--d1` once.
+   After that, a plain `pnpm deploy:worker` (no flag) keeps using the same DB.
+   In Workers Builds, set this as the **Deploy command** for the first deploy.
+
+2. **Set an env var** `D1_DATABASE_ID=<id>` (in `.dev.vars` locally, or under
+   Settings → Build → Environment variables in Workers Builds). `wrangler.toml`
+   interpolates `database_id = "${D1_DATABASE_ID}"`, and `deploy.js` also picks
+   it up. Keeps the id out of git.
+
+3. **Let it auto-provision** — pass nothing. With wrangler ≥ 4.45.0,
+   `wrangler deploy` creates `botion-db` and links it. (This is what failed
+   before on wrangler v3; the repo now pins v4.)
+
+Get your id with `npx wrangler d1 list` (or `d1 create botion-db` the first
+time). Never hardcode a placeholder UUID in the committed config — a stale id is
+exactly what causes "database with id ... not found".
+
+R2 and the Queue auto-provision the same way (id-less bindings) with the
+auto-generated build token — no extra permissions needed.
 
 **Wrangler version matters.** Workers Builds uses the wrangler version from your
 `package.json`. Auto-provisioning requires **wrangler ≥ 4.45.0** (this repo pins
