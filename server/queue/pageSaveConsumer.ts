@@ -17,6 +17,18 @@ interface Env {
 }
 
 export async function handlePageSaveQueue(batch: MessageBatch<PageSaveMessage>, env: Env) {
+  // Detect Vectorize availability once per batch. When absent (local mode or
+  // no provisioned prod index), we skip embedding entirely — search falls back
+  // to D1 text search over pages.title / blocks.content at query time.
+  const vectorizeAvailable = !!env.VECTOR_INDEX && typeof env.VECTOR_INDEX.upsert === 'function';
+  if (!vectorizeAvailable) {
+    console.log(
+      `[Queue] Vectorize unavailable — skipping embedding for ${batch.messages.length} message(s); ` +
+        `search will use D1 text-search fallback.`
+    );
+    return;
+  }
+
   for (const message of batch.messages) {
     const { pageId, workspaceId, title, content } = message.body;
 
@@ -43,8 +55,8 @@ export async function handlePageSaveQueue(batch: MessageBatch<PageSaveMessage>, 
           },
         ]);
       } catch (err) {
-        // Vectorize may not be available in local mode — skip silently
-        console.log('[Queue] Vectorize unavailable in local mode, skipping embedding');
+        // Vectorize became unavailable mid-batch — stop; D1 text search covers reads.
+        console.log('[Queue] Vectorize upsert failed, skipping embedding (D1 fallback applies)');
       }
     }
   }

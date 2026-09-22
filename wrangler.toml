@@ -47,12 +47,6 @@ queue = "page-save-queue"
 max_batch_size = 10
 max_batch_timeout = 30
 
-# ━━ Vectorize (RAG) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Create: wrangler vectorize create botion-vectors --dimensions=768 --metric=cosine
-[[vectorize]]
-binding = "VECTOR_INDEX"
-index_name = "botion-vectors"
-
 # ━━ Workers AI ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [ai]
 binding = "AI"

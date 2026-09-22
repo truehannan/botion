@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { createDb } from '../db';
 import { authMiddleware } from '../auth';
 import { runAI } from '../utils/ai-mock';
+import { d1TextSearch } from '../utils/text-search';
 import type { AppEnv } from '../types';
 
 interface MCPToolCall {
@@ -75,11 +76,19 @@ async function executeTool(env: AppEnv['Bindings'], call: MCPToolCall): Promise<
           filter: { workspaceId },
           returnMetadata: true,
         });
-        return JSON.stringify({ results: results.matches?.map((m: any) => ({
+        const matches = results.matches?.map((m: any) => ({
           id: m.id, score: m.score, text: m.metadata?.text, pageId: m.metadata?.pageId,
-        })) ?? [] });
+        })) ?? [];
+        // If Vectorize returned nothing (e.g. empty/unindexed), fall back to D1 text search.
+        if (matches.length === 0) {
+          const textResults = await d1TextSearch(db, workspaceId, query, topK);
+          return JSON.stringify({ results: textResults, source: 'd1_text_search' });
+        }
+        return JSON.stringify({ results: matches, source: 'vectorize' });
       } catch {
-        return JSON.stringify({ results: [], note: 'Vectorize not available in local mode' });
+        // Vectorize unavailable (local mode or no prod index) — D1 text search fallback.
+        const textResults = await d1TextSearch(db, workspaceId, query, topK);
+        return JSON.stringify({ results: textResults, source: 'd1_text_search' });
       }
     }
     case 'create_new_botion_page': {
