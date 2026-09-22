@@ -52,6 +52,6 @@ max_batch_timeout = 30
 binding = "AI"
 
 # ━━ Vectorize (semantic search) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[[vectorize]]
-binding = "VECTOR_INDEX"
-index_name = "botion-vectors"
+#[[vectorize]]
+#binding = "VECTOR_INDEX"
+#index_name = "botion-vectors"
