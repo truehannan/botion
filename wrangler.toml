@@ -15,11 +15,12 @@ ENVIRONMENT = "development"
 # ━━ D1 (SQLite) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Create:   wrangler d1 create botion-db
 # Migrate:  wrangler d1 migrations apply botion-db
-# In local dev, database_id can be any valid UUID; wrangler creates a local SQLite file.
+# No database_id: wrangler >=4.45.0 AUTO-PROVISIONS this database on
+# `wrangler deploy` (and creates a local one on `wrangler dev`). Do NOT add a
+# placeholder id — a stale/fake id makes deploy fail with "database not found".
 [[d1_databases]]
 binding = "DB"
 database_name = "botion-db"
-database_id = "00000000-0000-0000-0000-000000000000"
 
 # ━━ R2 (Object Storage) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Create: wrangler r2 bucket create botion-storage
@@ -52,6 +53,6 @@ max_batch_timeout = 30
 binding = "AI"
 
 # ━━ Vectorize (semantic search) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#[[vectorize]]
-#binding = "VECTOR_INDEX"
-#index_name = "botion-vectors"
+[[vectorize]]
+binding = "VECTOR_INDEX"
+index_name = "botion-vectors"

@@ -140,7 +140,18 @@ botion/
 
 ### 3.1 Wrangler deployment
 - Remove `[build]` from `wrangler.toml` — wrangler bundles TS natively
-- Must set `database_id` in `[[d1_databases]]` even if it points to a dummy UUID for local dev
+- **D1 auto-provisioning (wrangler ≥ 4.45.0)**: the `[[d1_databases]]` block has
+  **no `database_id`** on purpose. `wrangler deploy` / `wrangler dev` create and
+  link the database automatically. Do NOT add a placeholder/dummy UUID — a stale
+  id defeats auto-provisioning and deploy fails with "database with id ... not
+  found". R2 and Queues auto-provision the same way (id-less bindings).
+- **Vectorize is NOT auto-provisioned** and the default Workers Builds token
+  can't create it. Create it once: `wrangler vectorize create botion-vectors
+  --dimensions=768 --metric=cosine`. Until it exists, search falls back to the
+  D1 text search in `server/utils/text-search.ts`.
+- Workers Builds runs the **Build + Deploy commands set in the dashboard**
+  (Settings → Build), not anything in `wrangler.toml`. Keep the Deploy command
+  as `npx wrangler deploy`.
 - `.dev.vars` is required locally for `JWT_SECRET` (used by `wrangler dev`)
 
 ### 3.2 GHA Release Workflow
@@ -219,7 +230,7 @@ These are the items identified as not yet fully implemented or requiring follow-
 - [ ] **Multi-column block rendering**: MultiColumnBlock has children but BlockNote may not render them correctly without a custom parent renderer
 - [ ] **Code block syntax highlighting**: Only shows `<select>` for language; no actual Prism/Shiki highlighting applied
 - [ ] **Math/LaTeX rendering**: `ref.current.innerHTML = text` is placeholder; needs KaTeX/MathJax integration
-- [ ] **Queue consumer error handling**: If Vectorize is truly absent (no prod index), the queue silently skips — add a D1-only text-search fallback
-- [ ] **wrangler d1 migrations without database_id**: When deploying, fill in the real `database_id` from `wrangler d1 create botion-db` output
+- [x] **Queue consumer error handling**: Vectorize-absent path handled — `pageSaveConsumer.ts` skips embedding cleanly and search uses the D1 text-search fallback (`server/utils/text-search.ts`)
+- [x] **D1 database_id**: Resolved via wrangler v4 auto-provisioning — `[[d1_databases]]` is id-less; `wrangler deploy` creates/links the DB. No manual id to fill in.
 - [ ] **Tailwind config `require()` in ESM**: tailwind.config.js uses ESM default export but `tailwindcss-animate` import might need CommonJS fallback checked per wrangler build
 - [ ] **BlockNote collaboration fragment**: `doc.getXmlFragment('document-store')` is used but the actual Yjs integration in the editor uses a second `doc` created per mount — verify no Yjs doc conflicts

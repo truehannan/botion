@@ -15,20 +15,19 @@
     "build:client": "pnpm --filter client build",
     "build:tauri": "pnpm --filter client tauri build",
     "typecheck": "tsc --noEmit && pnpm --filter client typecheck",
-    "deploy:worker": "node scripts/provision.js --strict && wrangler deploy",
+    "deploy:worker": "wrangler deploy",
     "deploy:client": "wrangler pages deploy client/dist --project-name=botion-web",
     "db:migrate": "wrangler d1 migrations apply botion-db",
     "db:migrate:local": "wrangler d1 migrations apply botion-db --local",
     "db:sync": "node scripts/db-sync.js",
     "setup": "node scripts/setup.js",
-    "provision": "node scripts/provision.js",
     "test": "node tests/run.js"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260920.1",
     "concurrently": "^8.2.0",
     "typescript": "^5.4.0",
-    "wrangler": "^3.60.0"
+    "wrangler": "^4.136.1"
   },
   "dependencies": {
     "hono": "^4.4.0",

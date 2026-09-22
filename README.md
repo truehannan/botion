@@ -91,14 +91,30 @@ pnpm install
 
 ### 2. Configure Cloudflare resources
 
+Botion relies on **wrangler v4 automatic provisioning** for most resources.
+Because `wrangler.toml` declares the D1, R2, and Queue bindings **without**
+resource IDs, `wrangler deploy` (and Workers Builds) creates and links them for
+you on first deploy — no manual `create` step, no IDs to paste.
+
+**Vectorize is the one exception.** Automatic provisioning does **not** cover
+Vectorize, so you must create the index **once**, up front:
+
 ```bash
-npx wrangler d1 create botion-db
-npx wrangler r2 bucket create botion-storage
 npx wrangler vectorize create botion-vectors --dimensions=768 --metric=cosine
-npx wrangler queues create page-save-queue
 ```
 
-Then fill the generated IDs into `wrangler.toml`.
+That's the only resource you have to create by hand. If you skip it, the app
+still runs — semantic search falls back to a D1 text search over page titles
+and block content (see `server/utils/text-search.ts`) until the index exists.
+
+> Do **not** put a placeholder `database_id` back into `wrangler.toml`. A
+> stale/fake ID defeats auto-provisioning and makes deploy fail at runtime with
+> "database with id ... not found". Leave the D1 block as `binding` +
+> `database_name` only.
+
+R2 and Queues auto-provision the same way (id-less bindings). For purely local
+development you don't need any of this — `wrangler dev --local` creates local
+stand-ins automatically.
 
 ### 3. Set secrets
 
@@ -145,16 +161,51 @@ VITE_API_URL=https://botion-api.your-account.workers.dev
 VITE_WS_URL=wss://botion-api.your-account.workers.dev
 ```
 
-## Deployment
+## Deployment (Cloudflare Workers Builds)
 
-The `deploy.yml` workflow triggers on every push to `main`:
-- Builds + type-checks Worker & client
-- Deploys Worker via `cloudflare/wrangler-action@v3`
-- Deploys Pages via `cloudflare/wrangler-action@v3`
+Deployment runs through **Workers Builds** (dashboard → your Worker →
+**Settings → Build**), which connects to your Git repo and runs a two-step
+process on every push to the production branch:
 
-Required secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+1. **Build command** — leave empty (or `pnpm install`); the Worker's TS is
+   bundled by wrangler at deploy time, so no separate build is needed.
+2. **Deploy command** — `npx wrangler deploy` (the default).
 
-Tag a release to trigger Tauri builds:
+Because `wrangler.toml` uses **id-less bindings**, `wrangler deploy` here
+**auto-provisions D1, R2, and the Queue** and links them to the Worker. This
+works with the auto-generated build token — no extra permissions needed for
+those three.
+
+**Wrangler version matters.** Workers Builds uses the wrangler version from your
+`package.json`. Auto-provisioning requires **wrangler ≥ 4.45.0** (this repo pins
+v4). On the old v3 line, D1 is *not* auto-created and deploy fails with
+"database with id ... not found".
+
+**Vectorize is not auto-provisioned** and the **default build token cannot
+create it** (that token only has KV/R2/Workers Scripts edit permissions — no
+D1-create, no Vectorize). So:
+
+- Create the index once yourself (see Setup step 2 above), **or**
+- If you want the build to manage Vectorize, attach a **custom API token** to
+  Workers Builds (Settings → Build → API token) that additionally includes
+  **Vectorize (edit)** — but a one-time manual `vectorize create` is simpler and
+  is all this project needs.
+
+Set the `JWT_SECRET` runtime secret via **Settings → Variables & Secrets** (or
+`npx wrangler secret put JWT_SECRET`).
+
+### Client (Cloudflare Pages)
+
+Deploy the web app separately:
+
+```bash
+pnpm build:client
+pnpm deploy:client   # wrangler pages deploy client/dist --project-name=botion-web
+```
+
+### Native binaries (Tauri)
+
+Tag a release to trigger the Tauri build workflow (`.github/workflows/release.yml`):
 
 ```bash
 git tag v0.1.0
