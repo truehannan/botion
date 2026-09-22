@@ -91,35 +91,45 @@ pnpm install
 
 ### 2. Configure Cloudflare resources
 
-Botion relies on **wrangler v4 automatic provisioning** for most resources.
-Because `wrangler.toml` declares the D1, R2, and Queue bindings **without**
-resource IDs, `wrangler deploy` (and Workers Builds) creates and links them for
-you on first deploy — no manual `create` step, no IDs to paste.
+**D1, R2 and the Queue auto-provision.** `wrangler.toml` declares these bindings
+without resource IDs, so `wrangler deploy` (and Workers Builds) creates and
+links them on first deploy — no manual `create` step. Requires **wrangler ≥
+4.45.0** (this repo pins v4).
 
-**Vectorize is the one exception.** Automatic provisioning does **not** cover
-Vectorize, so you must create the index **once**, up front:
+For D1 you have a choice, controlled by one env var:
+
+- **Auto-provision** (default): leave `D1_DATABASE_ID` unset. Wrangler creates
+  `botion-db` on deploy and links it.
+- **Bind an existing DB**: set `D1_DATABASE_ID` to a real id (from
+  `npx wrangler d1 list` or the dashboard). `wrangler.toml` interpolates it via
+  `database_id = "${D1_DATABASE_ID}"`, so the real id never lives in git.
+
+Copy `.dev.vars.example` → `.dev.vars` for local runs, or set the same variable
+names in Workers Builds (**Settings → Build → Environment variables**).
+
+> Never hardcode a placeholder UUID for `database_id` — a stale id breaks deploy
+> with "database with id ... not found". Use the env var (or leave it unset).
+
+**Vectorize is optional and OFF by default.** It is not auto-provisioned, and
+the `[[vectorize]]` binding in `wrangler.toml` is commented out so deploys never
+fail on a missing index. The app runs fine without it — semantic search falls
+back to a D1 text search over page titles and block content
+(`server/utils/text-search.ts`), and the code guards `env.VECTOR_INDEX` before
+use. To enable semantic search:
 
 ```bash
 npx wrangler vectorize create botion-vectors --dimensions=768 --metric=cosine
+# then uncomment the [[vectorize]] binding in wrangler.toml and redeploy
 ```
 
-That's the only resource you have to create by hand. If you skip it, the app
-still runs — semantic search falls back to a D1 text search over page titles
-and block content (see `server/utils/text-search.ts`) until the index exists.
-
-> Do **not** put a placeholder `database_id` back into `wrangler.toml`. A
-> stale/fake ID defeats auto-provisioning and makes deploy fail at runtime with
-> "database with id ... not found". Leave the D1 block as `binding` +
-> `database_name` only.
-
-R2 and Queues auto-provision the same way (id-less bindings). For purely local
-development you don't need any of this — `wrangler dev --local` creates local
-stand-ins automatically.
+For purely local development you don't need any of this — `wrangler dev --local`
+creates local stand-ins automatically.
 
 ### 3. Set secrets
 
 ```bash
-npx wrangler secret put JWT_SECRET
+npx wrangler secret put JWT_SECRET   # production runtime secret
+# for local dev, put JWT_SECRET in .dev.vars (see .dev.vars.example)
 ```
 
 ### 4. Run migrations

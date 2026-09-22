@@ -13,7 +13,7 @@ interface PageSaveMessage {
 interface Env {
   DB: D1Database;
   AI: Ai;
-  VECTOR_INDEX: VectorizeIndex;
+  VECTOR_INDEX?: VectorizeIndex;
 }
 
 export async function handlePageSaveQueue(batch: MessageBatch<PageSaveMessage>, env: Env) {
@@ -28,6 +28,8 @@ export async function handlePageSaveQueue(batch: MessageBatch<PageSaveMessage>, 
     );
     return;
   }
+  // Guard above guarantees the binding exists; narrow it for the rest of the fn.
+  const index = env.VECTOR_INDEX!;
 
   for (const message of batch.messages) {
     const { pageId, workspaceId, title, content } = message.body;
@@ -42,7 +44,7 @@ export async function handlePageSaveQueue(batch: MessageBatch<PageSaveMessage>, 
       const vec = (embedding as { data: number[][] }).data[0];
 
       try {
-        await env.VECTOR_INDEX.upsert([
+        await index.upsert([
           {
             id: `${pageId}_chunk_${i}`,
             values: vec,

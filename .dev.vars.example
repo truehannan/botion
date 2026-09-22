@@ -1,0 +1,19 @@
+# Example local dev / build variables for Botion's Worker.
+# Copy to `.dev.vars` (git-ignored) and fill in real values, OR set the same
+# names as environment variables in Cloudflare Workers Builds
+# (Settings → Build → Environment variables).
+
+# ── D1 database id ─────────────────────────────────────────────
+# wrangler.toml uses  database_id = "${D1_DATABASE_ID}"  and interpolates it
+# from here at config load. Two modes:
+#   • Leave BLANK/unset → wrangler >=4.45.0 auto-provisions the DB on
+#     `wrangler deploy` and links it for you (no id needed).
+#   • Set the real id (from `npx wrangler d1 list` or the dashboard) → wrangler
+#     binds to exactly that database. This keeps the real id out of git.
+# Get it once with:  npx wrangler d1 create botion-db   (or: d1 list)
+D1_DATABASE_ID=
+
+# ── Auth secret (required) ─────────────────────────────────────
+# HS256 signing key for JWTs. In production set it as a runtime secret instead:
+#   npx wrangler secret put JWT_SECRET
+JWT_SECRET=change-me-in-local-dev

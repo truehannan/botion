@@ -68,10 +68,17 @@ async function executeTool(env: AppEnv['Bindings'], call: MCPToolCall): Promise<
   switch (call.name) {
     case 'search_vectorize_workspace': {
       const { workspaceId, query, topK = 5 } = call.arguments as any;
+      // Vectorize is optional. If the binding isn't configured, skip straight
+      // to the D1 text-search fallback — no embedding call, no throw.
+      const vectorizeAvailable = !!env.VECTOR_INDEX && typeof env.VECTOR_INDEX.query === 'function';
+      if (!vectorizeAvailable) {
+        const textResults = await d1TextSearch(db, workspaceId, query, topK);
+        return JSON.stringify({ results: textResults, source: 'd1_text_search' });
+      }
       const embedding = await runAI(env.AI, '@cf/baai/bge-base-en-v1.5', { text: query });
       const vec = (embedding as any).data[0] as number[];
       try {
-        const results = await env.VECTOR_INDEX.query(vec, {
+        const results = await env.VECTOR_INDEX!.query(vec, {
           topK,
           filter: { workspaceId },
           returnMetadata: true,

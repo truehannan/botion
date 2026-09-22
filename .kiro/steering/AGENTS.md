@@ -140,15 +140,18 @@ botion/
 
 ### 3.1 Wrangler deployment
 - Remove `[build]` from `wrangler.toml` — wrangler bundles TS natively
-- **D1 auto-provisioning (wrangler ≥ 4.45.0)**: the `[[d1_databases]]` block has
-  **no `database_id`** on purpose. `wrangler deploy` / `wrangler dev` create and
-  link the database automatically. Do NOT add a placeholder/dummy UUID — a stale
-  id defeats auto-provisioning and deploy fails with "database with id ... not
-  found". R2 and Queues auto-provision the same way (id-less bindings).
-- **Vectorize is NOT auto-provisioned** and the default Workers Builds token
-  can't create it. Create it once: `wrangler vectorize create botion-vectors
-  --dimensions=768 --metric=cosine`. Until it exists, search falls back to the
-  D1 text search in `server/utils/text-search.ts`.
+- **D1 (wrangler ≥ 4.45.0)**: the `[[d1_databases]]` block sets
+  `database_id = "${D1_DATABASE_ID}"` (env interpolation). Leave `D1_DATABASE_ID`
+  unset → `wrangler deploy` auto-provisions `botion-db` and links it. Set it to a
+  real id (in `.dev.vars` or Workers Builds env vars) → binds that exact DB, id
+  stays out of git. Never hardcode a placeholder UUID — a stale id breaks deploy
+  with "database with id ... not found". R2 and Queues auto-provision (id-less).
+- **Vectorize is OPTIONAL and the binding is commented out** in `wrangler.toml`
+  by default (it is NOT auto-provisioned, and the default Workers Builds token
+  can't create it). Code guards `env.VECTOR_INDEX` (optional in `types.ts`), so
+  the app runs without it — search falls back to `server/utils/text-search.ts`.
+  To enable: `wrangler vectorize create botion-vectors --dimensions=768
+  --metric=cosine`, then uncomment the `[[vectorize]]` binding.
 - Workers Builds runs the **Build + Deploy commands set in the dashboard**
   (Settings → Build), not anything in `wrangler.toml`. Keep the Deploy command
   as `npx wrangler deploy`.

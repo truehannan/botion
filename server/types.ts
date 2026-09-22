@@ -17,7 +17,9 @@ export type AppEnv = {
   Bindings: {
     DB: D1Database;
     STORAGE: R2Bucket;
-    VECTOR_INDEX: VectorizeIndex;
+    // Optional: Vectorize is not auto-provisioned and may be absent. When it is,
+    // semantic search falls back to the D1 text search (server/utils/text-search.ts).
+    VECTOR_INDEX?: VectorizeIndex;
     PAGE_SAVE_QUEUE: Queue;
     BOTION_SYNC_ROOM: DurableObjectNamespace<BotionSyncRoom>;
     AI: Ai;
