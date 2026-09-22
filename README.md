@@ -1,6 +1,6 @@
 # Botion
 
-Edge-native, real-time collaborative workspace. Entirely serverless on Cloudflare — Workers, D1, Durable Objects, R2, Queues, Vectorize, and Workers AI. Frontend deploys to Cloudflare Pages. Native binaries powered by Tauri v2.
+Edge-native, collaborative workspace. Entirely serverless on Cloudflare — Workers, D1, R2, Queues, Vectorize, and Workers AI. Frontend deploys to Cloudflare Pages. Native binaries powered by Tauri v2.
 
 ## Architecture
 
@@ -9,7 +9,7 @@ Edge-native, real-time collaborative workspace. Entirely serverless on Cloudflar
 | Frontend | React 18 + Vite + Tailwind CSS + BlockNote | Cloudflare Pages |
 | Backend | Hono on Cloudflare Workers | V8 Isolate |
 | Database | Cloudflare D1 (SQLite) | Serverless |
-| Real-time Sync | Durable Objects + WebSocket Hibernation + Yjs | Zero-cost idle |
+| Sync / persistence | REST auto-save to D1 + IndexedDB offline queue | Serverless |
 | Storage | Cloudflare R2 | Object |
 | AI / RAG | Workers AI + Vectorize | Edge inference |
 | Native | Tauri v2 | Windows, macOS, Linux, Android |
@@ -27,8 +27,6 @@ botion/
 │   ├── auth.ts            # JWT auth + middleware
 │   ├── db.ts              # D1 wrapper (pure serverless)
 │   ├── types.ts           # Hono Env types
-│   ├── durable-objects/
-│   │   └── BotionSyncRoom.ts
 │   ├── queue/
 │   │   └── pageSaveConsumer.ts
 │   └── routes/
@@ -273,5 +271,5 @@ All backend code runs strictly inside Cloudflare V8 isolates:
 - No `fs`, `path`, `http`, `process`, `Buffer` in runtime code
 - `crypto.randomUUID()` and `crypto.subtle.digest()` — Web Crypto
 - `jose` v5 — pure Web Crypto
-- `yjs` — pure JS, runs in DO isolate
+- `yjs` — pure JS, runs in-memory in the Worker isolate
 - `zod` — pure JS

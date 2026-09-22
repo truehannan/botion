@@ -127,9 +127,11 @@ export function debounce<T extends (...args: any[]) => void>(fn: T, ms = 2000): 
 }
 
 /**
- * Check if we should use local/REST sync instead of WebSocket DO.
+ * Whether to use local/REST sync instead of a WebSocket.
+ * The Durable Object that backed WebSocket sync has been removed, so this is
+ * always true — editing persists via the REST endpoint POST /sync/:pageId
+ * (debounced auto-save + IndexedDB offline queue).
  */
 export function prefersLocalSync(): boolean {
-  // Local mode via env, or when user explicitly disabled WebSockets
-  return import.meta.env.VITE_LOCAL_MODE === 'true' || navigator.onLine === false;
+  return true;
 }

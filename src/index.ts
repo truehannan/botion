@@ -15,7 +15,6 @@ import viewRoutes from '../server/routes/views';
 import backlinkRoutes from '../server/routes/backlinks';
 import settingsRoutes from '../server/routes/settings';
 import syncRoutes from '../server/routes/sync';
-import { BotionSyncRoom } from '../server/durable-objects/BotionSyncRoom';
 import { handlePageSaveQueue } from '../server/queue/pageSaveConsumer';
 import type { AppEnv } from '../server/types';
 
@@ -59,6 +58,3 @@ export default {
     ctx.waitUntil(handlePageSaveQueue(batch, env));
   },
 };
-
-// Durable Object export
-export { BotionSyncRoom };

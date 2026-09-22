@@ -31,15 +31,6 @@ database_id = ""
 binding = "STORAGE"
 bucket_name = "botion-storage"
 
-# ━━ Durable Objects (WebSocket Hibernation) ━━━━━━━━━━━━━━━━━━━━━━━━
-[[durable_objects.bindings]]
-name = "BOTION_SYNC_ROOM"
-class_name = "BotionSyncRoom"
-
-[[migrations]]
-tag = "v1"
-new_classes = ["BotionSyncRoom"]
-
 # ━━ Queues ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Create: wrangler queues create page-save-queue
 [[queues.producers]]

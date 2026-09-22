@@ -3,11 +3,8 @@ import type {
   R2Bucket,
   VectorizeIndex,
   Queue,
-  DurableObjectNamespace,
   Ai,
 } from '@cloudflare/workers-types';
-
-import type { BotionSyncRoom } from './durable-objects/BotionSyncRoom';
 
 /**
  * Hono environment types. All Cloudflare bindings are injected
@@ -21,7 +18,6 @@ export type AppEnv = {
     // semantic search falls back to the D1 text search (server/utils/text-search.ts).
     VECTOR_INDEX?: VectorizeIndex;
     PAGE_SAVE_QUEUE: Queue;
-    BOTION_SYNC_ROOM: DurableObjectNamespace<BotionSyncRoom>;
     AI: Ai;
     JWT_SECRET: string;
     ENVIRONMENT: string;

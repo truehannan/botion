@@ -18,8 +18,6 @@ botion/
 │   ├── db.ts                  # D1 typed wrapper
 │   ├── local-init.ts          # Auto-creates schema on first dev request
 │   ├── types.ts               # Hono Env types
-│   ├── durable-objects/
-│   │   └── BotionSyncRoom.ts  # Yjs + WebSocket Hibernation
 │   ├── queue/
 │   │   └── pageSaveConsumer.ts # Embedding pipeline (Vectorize optional)
 │   ├── routes/
@@ -107,10 +105,14 @@ botion/
 
 ## 2. Critical Decisions Made
 
-### 2.1 WebSocket vs REST Sync
-- **Durable Object** (`BotionSyncRoom`) handles real-time collaboration via Yjs binary CRDT over WebSocket
-- **BUT** in local/offline mode, the Editor falls back to **REST sync** (`/sync/:pageId`) with debounced auto-save (2.5s)
-- This means: WebSocket is used when Durable Objects are available, REST is used in local-only or offline mode
+### 2.1 Sync (REST-based)
+- Editing persists via **REST auto-save** (`POST /sync/:pageId`, `server/routes/sync.ts`)
+  with debounced writes (2.5s) plus an IndexedDB offline queue (`persistence.ts`).
+- The **Durable Object** that previously powered real-time WebSocket collaboration
+  has been **removed** — this is a DO-free Worker. `prefersLocalSync()` is always
+  true, so the client never opens a WebSocket. `/pages/:id/sync` returns 426.
+- Tradeoff: no live multi-user cursors/instant sync; page content still saves and
+  loads via REST + D1.
 
 ### 2.2 Local Development Mode
 - `pnpm dev:local` runs worker+client entirely local via Miniflare
@@ -131,7 +133,7 @@ botion/
 - No Node.js APIs in runtime (`fs`, `path`, `http`, `process`, `Buffer`)
 - `crypto.randomUUID()` + `crypto.subtle.digest()` for password hashing
 - `jose` v5 works natively on Web Crypto (no `nodejs_compat` flag)
-- `yjs` runs purely in-memory inside the DO isolate
+- `yjs` runs purely in-memory inside the Worker isolate
 - `wrangler deploy` bundles all server TS via esbuild (no `[build]` block needed in wrangler.toml)
 
 ---
@@ -163,10 +165,12 @@ botion/
 - Node 20 is EOL for GitHub Actions; use Node 22
 - macOS universal binary builds need two matrix entries (`aarch64` + `x86_64`)
 
-### 3.3 WebSocket Hibernation Limit
-- `ctx.acceptWebSocket()` + `this.ctx.storage.setAlarm()` = zero-cost idle
-- But the Durable Object **loses in-memory state** across hibernation; it reloads schema by design
-- Yjs state is memory-only during sessions; alarm flushes binary to D1 every 5s
+### 3.3 Durable Objects removed
+- The Worker is **DO-free**. The old `BotionSyncRoom` (Yjs + WebSocket
+  Hibernation) was deleted, along with its `[[durable_objects]]` / `[[migrations]]`
+  bindings in `wrangler.toml` and the `export { BotionSyncRoom }` in `src/index.ts`.
+- Nothing in the runtime references a DO namespace anymore; deploys no longer
+  require DO migrations.
 
 ### 3.4 MCP Chat Edge Cases
 - LLM may return tool calls without `workspaceId`; the endpoint injects it before executing

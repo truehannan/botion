@@ -154,19 +154,17 @@ app.delete('/:id', async (c) => {
   return c.json({ success: true });
 });
 
-// WebSocket endpoint for Yjs sync
+// Real-time WebSocket sync was backed by a Durable Object, which has been
+// removed. Editing now persists via the REST endpoint `POST /sync/:pageId`
+// (debounced auto-save). This route is kept only to return a clear signal to
+// any old client that still tries to open a WebSocket here.
 app.get('/:id/sync', async (c) => {
   const user = c.get('user');
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
-
-  const pageId = c.req.param('id');
-  const id = c.env.BOTION_SYNC_ROOM.idFromName(pageId);
-  const obj = c.env.BOTION_SYNC_ROOM.get(id);
-
-  const url = new URL(c.req.url);
-  url.searchParams.set('pageId', pageId);
-
-  return obj.fetch(new Request(url.toString(), c.req.raw));
+  return c.json(
+    { error: 'Realtime WebSocket sync is disabled; use REST sync at POST /sync/:pageId' },
+    426 // Upgrade Required — signals the WS upgrade path is unavailable
+  );
 });
 
 export default app;
