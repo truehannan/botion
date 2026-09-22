@@ -15,7 +15,7 @@
     "build:client": "pnpm --filter client build",
     "build:tauri": "pnpm --filter client tauri build",
     "typecheck": "tsc --noEmit && pnpm --filter client typecheck",
-    "deploy:worker": "wrangler deploy",
+    "deploy:worker": "node scripts/provision.js --strict && wrangler deploy",
     "deploy:client": "wrangler pages deploy client/dist --project-name=botion-web",
     "db:migrate": "wrangler d1 migrations apply botion-db",
     "db:migrate:local": "wrangler d1 migrations apply botion-db --local",

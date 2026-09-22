@@ -19,7 +19,7 @@ ENVIRONMENT = "development"
 [[d1_databases]]
 binding = "DB"
 database_name = "botion-db"
-database_id = "00000000-0000-0000-0000-000000000001"
+database_id = "00000000-0000-0000-0000-000000000000"
 
 # ━━ R2 (Object Storage) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Create: wrangler r2 bucket create botion-storage
@@ -50,3 +50,8 @@ max_batch_timeout = 30
 # ━━ Workers AI ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [ai]
 binding = "AI"
+
+# ━━ Vectorize (semantic search) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[[vectorize]]
+binding = "VECTOR_INDEX"
+index_name = "botion-vectors"
