@@ -38,10 +38,24 @@ const STRICT = process.argv.includes('--strict');
 function log(msg) { console.log(`[provision] ${msg}`); }
 function warn(msg) { console.warn(`[provision] ⚠ ${msg}`); }
 
-/** Run a command, capturing stdout. Returns null on failure. */
+// Env that silences wrangler's update/telemetry banners so they don't
+// contaminate --json stdout. CI=1 disables the fancy update box.
+const QUIET_ENV = {
+  ...process.env,
+  CI: '1',
+  WRANGLER_SEND_METRICS: 'false',
+  WRANGLER_CHECK_FOR_UPDATES: 'false',
+  NO_COLOR: '1',
+};
+
+/** Run a command, capturing stdout only (stderr discarded). null on failure. */
 function runCapture(cmd) {
   try {
-    return execSync(cmd, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] });
+    return execSync(cmd, {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      env: QUIET_ENV,
+    });
   } catch (e) {
     return null;
   }
@@ -50,7 +64,7 @@ function runCapture(cmd) {
 /** Run a command for side effects. Returns true on success. */
 function runOk(cmd) {
   try {
-    execSync(cmd, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] });
+    execSync(cmd, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'], env: QUIET_ENV });
     return true;
   } catch (e) {
     return false;
@@ -65,18 +79,60 @@ function fail(msg) {
   warn(`${msg} (non-strict: continuing)`);
 }
 
+/**
+ * Extract the last balanced JSON array/object from a string, ignoring any
+ * leading banner/warning text (which may itself contain stray brackets like
+ * "[WARNING]"). Scans for each candidate start and returns the first one that
+ * parses AND consumes the balance of the string's JSON payload.
+ */
+function extractJson(text) {
+  if (!text) return null;
+  // Try direct parse first (clean --json output).
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch { /* fall through to scanning */ }
+
+  // Scan every '[' or '{' position; attempt to parse a balanced value from it.
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch !== '[' && ch !== '{') continue;
+    const open = ch;
+    const close = ch === '[' ? ']' : '}';
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    for (let j = i; j < text.length; j++) {
+      const c = text[j];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (c === '\\') esc = true;
+        else if (c === '"') inStr = false;
+        continue;
+      }
+      if (c === '"') inStr = true;
+      else if (c === open) depth++;
+      else if (c === close) {
+        depth--;
+        if (depth === 0) {
+          const candidate = text.slice(i, j + 1);
+          try {
+            return JSON.parse(candidate);
+          } catch {
+            break; // this start didn't yield valid JSON; try next start
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
 /** Parse `wrangler <resource> list --json`, tolerant of banner noise. */
 function listJson(cmd) {
   const out = runCapture(cmd);
   if (out == null) return null; // command failed (auth, network, etc.)
-  // Some wrangler versions print a banner before the JSON; slice from first bracket.
-  const start = out.search(/[\[{]/);
-  if (start === -1) return null;
-  try {
-    return JSON.parse(out.slice(start));
-  } catch {
-    return null;
-  }
+  return extractJson(out);
 }
 
 // ─────────────────────────────────────────────────────────────────
