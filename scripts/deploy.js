@@ -43,31 +43,38 @@ if (d1Id) {
     process.exit(1);
   }
   if (!existsSync(TOML)) {
-    console.error(`[deploy] ✗ ${TOML} not found (run from project root).`);
+    console.error(`[deploy] ✗ ${TOML} not found (run from project root / build root dir).`);
     process.exit(1);
   }
   let toml = readFileSync(TOML, 'utf-8');
-  // Replace the database_id value inside the botion-db block (handles the
-  // ${D1_DATABASE_ID} placeholder or any prior value).
-  const blockRe = /(\[\[d1_databases\]\][\s\S]*?)(?=\n\[\[|\n\[|$)/g;
-  let replaced = false;
-  toml = toml.replace(blockRe, (block) => {
-    if (!/database_name\s*=\s*"botion-db"/.test(block)) return block;
-    replaced = true;
-    if (/database_id\s*=\s*"[^"]*"/.test(block)) {
-      return block.replace(/(database_id\s*=\s*")[^"]*(")/, `$1${d1Id}$2`);
-    }
-    return block.replace(/(database_name\s*=\s*"[^"]*"\s*\n)/, `$1database_id = "${d1Id}"\n`);
-  });
-  if (!replaced) {
-    console.error('[deploy] ✗ could not find the botion-db [[d1_databases]] block.');
+  const before = toml;
+
+  // If the id is already set to exactly this value, we're done (idempotent).
+  if (new RegExp(`database_id\\s*=\\s*"${d1Id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`).test(toml)) {
+    log(`database_id already set to ${d1Id} — nothing to change.`);
+  } else if (/database_id\s*=\s*"[^"]*"/.test(toml)) {
+    // Set the value of the existing `database_id = "..."` line (empty, a prior
+    // id, or a ${VAR} placeholder). Works regardless of line endings.
+    toml = toml.replace(/database_id\s*=\s*"[^"]*"/, `database_id = "${d1Id}"`);
+  } else if (/database_name\s*=\s*"botion-db"/.test(toml)) {
+    // No database_id line at all — add one right after database_name.
+    toml = toml.replace(/(database_name\s*=\s*"botion-db"[^\n]*\n)/, `$1database_id = "${d1Id}"\n`);
+  } else {
+    console.error('[deploy] ✗ could not locate a database_id line or the botion-db binding in wrangler.toml.');
+    console.error('[deploy]   The [[d1_databases]] block should contain: database_id = ""');
     process.exit(1);
   }
-  writeFileSync(TOML, toml);
-  log(`Injected D1 database_id into ${TOML}: ${d1Id}`);
+
+  if (toml !== before) {
+    writeFileSync(TOML, toml);
+  }
+  log(`D1 database_id: ${d1Id}`);
+  // Echo the resulting line so the build log confirms the value.
+  const line = toml.split(/\r?\n/).find((l) => /^\s*database_id\s*=/.test(l));
+  log(`wrangler.toml now has: ${line?.trim()}`);
   log('This deploy links the DB to the Worker; the link persists on future deploys.');
 } else {
-  log('No --d1 / D1_DATABASE_ID given — relying on auto-provisioning or ${D1_DATABASE_ID} interpolation.');
+  log('No --d1 / D1_DATABASE_ID given — using empty database_id (wrangler auto-provisions botion-db).');
 }
 
 // Run the real deploy. Pass through any extra args after our own.

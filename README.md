@@ -96,14 +96,17 @@ without resource IDs, so `wrangler deploy` (and Workers Builds) creates and
 links them on first deploy — no manual `create` step. Requires **wrangler ≥
 4.45.0** (this repo pins v4).
 
-For D1 you have a choice, controlled by one env var:
+For D1, the committed `database_id` is **empty** (`database_id = ""`). You have
+two ways to give it a real database:
 
-- **Auto-provision** (default): leave `D1_DATABASE_ID` unset. Wrangler creates
-  `botion-db` on deploy and links it.
-- **Bind an existing DB**: set `D1_DATABASE_ID` to a real id (from
-  `npx wrangler d1 list` or the dashboard). `wrangler.toml` interpolates it via
-  `database_id = "${D1_DATABASE_ID}"`, so the real id never lives in git.
+- **Auto-provision** (default): leave it empty. Wrangler creates `botion-db` on
+  deploy and links it.
+- **Bind an existing DB**: pass the id at deploy time — either
+  `pnpm deploy:worker --d1 "<id>"` or set `D1_DATABASE_ID=<id>`. `scripts/deploy.js`
+  writes the id into the binding just before `wrangler deploy`, so the real id
+  never has to live committed in git.
 
+Get the id with `npx wrangler d1 list` (or `d1 create botion-db` the first time).
 Copy `.dev.vars.example` → `.dev.vars` for local runs, or set the same variable
 names in Workers Builds (**Settings → Build → Environment variables**).
 
@@ -212,9 +215,9 @@ give the deploy a real id — pick whichever you like:
    In Workers Builds, set this as the **Deploy command** for the first deploy.
 
 2. **Set an env var** `D1_DATABASE_ID=<id>` (in `.dev.vars` locally, or under
-   Settings → Build → Environment variables in Workers Builds). `wrangler.toml`
-   interpolates `database_id = "${D1_DATABASE_ID}"`, and `deploy.js` also picks
-   it up. Keeps the id out of git.
+   Settings → Build → Environment variables in Workers Builds). `scripts/deploy.js`
+   reads it and writes the id into the `database_id = ""` binding before deploy.
+   Keeps the id out of git.
 
 3. **Let it auto-provision** — pass nothing. With wrangler ≥ 4.45.0,
    `wrangler deploy` creates `botion-db` and links it. (This is what failed

@@ -4,12 +4,11 @@
 # (Settings → Build → Environment variables).
 
 # ── D1 database id ─────────────────────────────────────────────
-# wrangler.toml uses  database_id = "${D1_DATABASE_ID}"  and interpolates it
-# from here at config load. Two modes:
+# wrangler.toml ships with  database_id = ""  (empty). scripts/deploy.js fills
+# it in from --d1 <id> OR this D1_DATABASE_ID env var, just before deploy.
 #   • Leave BLANK/unset → wrangler >=4.45.0 auto-provisions the DB on
 #     `wrangler deploy` and links it for you (no id needed).
-#   • Set the real id (from `npx wrangler d1 list` or the dashboard) → wrangler
-#     binds to exactly that database. This keeps the real id out of git.
+#   • Set the real id (from `npx wrangler d1 list`) → binds that exact database.
 # Get it once with:  npx wrangler d1 create botion-db   (or: d1 list)
 D1_DATABASE_ID=
 

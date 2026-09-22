@@ -15,17 +15,15 @@ ENVIRONMENT = "development"
 # ━━ D1 (SQLite) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Create:   wrangler d1 create botion-db
 # Migrate:  wrangler d1 migrations apply botion-db
-# database_id via env interpolation: wrangler substitutes ${D1_DATABASE_ID}
-# from your environment / .dev.vars at config load. Two ways to run:
-#   • Leave D1_DATABASE_ID UNSET → wrangler >=4.45.0 AUTO-PROVISIONS the DB on
-#     `wrangler deploy` and links it (the empty value is ignored on create).
-#   • Set D1_DATABASE_ID=<real-id> (in .dev.vars or Workers Builds env vars) →
-#     wrangler uses that exact database. Keeps the real id out of git.
-# Do NOT hardcode a placeholder UUID here — a stale id breaks deploy.
+# database_id is intentionally EMPTY:
+#   • Empty → wrangler >=4.45.0 AUTO-PROVISIONS botion-db on deploy and links it.
+#   • `pnpm deploy:worker --d1 <id>` (or D1_DATABASE_ID=<id>) fills this in before
+#     deploy, binding an existing DB. scripts/deploy.js does the substitution.
+# Never hardcode a placeholder UUID — a stale id breaks deploy.
 [[d1_databases]]
 binding = "DB"
 database_name = "botion-db"
-database_id = "${D1_DATABASE_ID}"
+database_id = ""
 
 # ━━ R2 (Object Storage) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Create: wrangler r2 bucket create botion-storage
