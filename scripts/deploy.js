@@ -77,6 +77,19 @@ if (d1Id) {
   log('No --d1 / D1_DATABASE_ID given — using empty database_id (wrangler auto-provisions botion-db).');
 }
 
+// Build the frontend so [assets].directory (client/dist) exists before deploy.
+// Workers Builds runs this deploy command; without it, wrangler errors that the
+// assets directory does not exist.
+log('Building frontend (client/dist)...');
+const build = spawnSync('pnpm', ['--filter', 'client', 'build'], {
+  stdio: 'inherit',
+  env: { ...process.env, NODE_OPTIONS: process.env.NODE_OPTIONS || '--max-old-space-size=4096' },
+});
+if ((build.status ?? 1) !== 0) {
+  console.error('[deploy] ✗ frontend build failed; aborting deploy.');
+  process.exit(build.status ?? 1);
+}
+
 // Run the real deploy. Pass through any extra args after our own.
 log('Running: wrangler deploy');
 const res = spawnSync('npx', ['wrangler', 'deploy'], { stdio: 'inherit' });

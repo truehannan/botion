@@ -2,13 +2,38 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
 
 jobs:
+  # Compute the release tag/name once: real tag on tag pushes, else a rolling
+  # per-commit tag for main pushes (main-<shortsha>).
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      name: ${{ steps.v.outputs.name }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - id: v
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "name=Botion ${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+            echo "tag=main-$SHORT" >> "$GITHUB_OUTPUT"
+            echo "name=Botion main ($SHORT)" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+
   # ── Desktop: Linux (.deb/.AppImage), macOS (.dmg), Windows (.msi) ──
   desktop:
+    needs: meta
     permissions:
       contents: write
     strategy:
@@ -70,20 +95,21 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
         with:
           projectPath: client
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
-          releaseName: 'Botion ${{ github.ref_name }}'
+          tagName: ${{ needs.meta.outputs.tag }}
+          releaseName: ${{ needs.meta.outputs.name }}
           releaseBody: |
             ## Downloads
             - **Linux**: `.deb`, `.AppImage`
             - **macOS**: `.dmg` (Apple Silicon + Intel)
             - **Windows**: `.msi`
             - **Android**: `.apk`, `.aab` (see the Android assets)
-          releaseDraft: true
-          prerelease: false
+          releaseDraft: false
+          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
           args: ${{ matrix.args }}
 
   # ── Android: .apk + .aab (separate flow; needs JDK + Android SDK/NDK) ──
   android:
+    needs: meta
     permissions:
       contents: write
     runs-on: ubuntu-22.04
@@ -156,7 +182,7 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
 
-      - name: Upload Android artifacts
+      - name: Upload Android artifacts (workflow)
         uses: actions/upload-artifact@v4
         with:
           name: botion-android
@@ -164,3 +190,16 @@ jobs:
             client/src-tauri/gen/android/app/build/outputs/**/*.apk
             client/src-tauri/gen/android/app/build/outputs/**/*.aab
           if-no-files-found: warn
+
+      - name: Attach Android artifacts to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.meta.outputs.tag }}
+          name: ${{ needs.meta.outputs.name }}
+          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
+          files: |
+            client/src-tauri/gen/android/app/build/outputs/**/*.apk
+            client/src-tauri/gen/android/app/build/outputs/**/*.aab
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
