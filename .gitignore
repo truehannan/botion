@@ -11,3 +11,10 @@ dist
 temp
 .pi/
 PROMPT*.md
+
+# Tauri build artifacts
+client/src-tauri/target
+client/src-tauri/gen
+# Generated platform icons (regenerated from icon.png by `pnpm tauri:prebuild`).
+client/src-tauri/icons/*
+!client/src-tauri/icons/icon.png

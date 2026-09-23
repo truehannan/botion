@@ -10,6 +10,7 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
+    "tauri:prebuild": "node ../scripts/gen-icon-source.js && tauri icon src-tauri/icons/icon.png && vite build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -31,13 +32,13 @@
     "react-dom": "^18.3.0",
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",
-    "yjs": "^13.6.0",
     "y-protocols": "^1.0.0",
+    "yjs": "^13.6.0",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.0",
-    "@tauri-apps/cli": "^2.0.0-beta",
+    "@tauri-apps/cli": "^2.11.5",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
