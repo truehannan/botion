@@ -16,7 +16,7 @@
  * Requires: local worker running on http://127.0.0.1:8787
  */
 
-const BASE = process.env.BOTION_TEST_URL || 'http://127.0.0.1:8787';
+const BASE = process.env.BOTION_TEST_URL || 'http://127.0.0.1:8787/api';
 
 async function fetchJson(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {

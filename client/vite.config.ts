@@ -14,27 +14,18 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
-      proxy: isLocal
-        ? {
-            '/api': {
-              target: 'http://127.0.0.1:8787',
-              changeOrigin: true,
-              ws: true,
-              rewrite: (path) => path.replace(/^\/api/, ''),
-            },
-          }
-        : {
-            '/api': {
-              target: 'http://127.0.0.1:8787',
-              changeOrigin: true,
-              ws: true,
-              rewrite: (path) => path.replace(/^\/api/, ''),
-            },
-          },
+      proxy: {
+        // Worker serves the API under /api, so preserve the prefix (no rewrite).
+        '/api': {
+          target: 'http://127.0.0.1:8787',
+          changeOrigin: true,
+          ws: true,
+        },
+      },
     },
     build: {
       outDir: 'dist',
-      sourcemap: true,
+      sourcemap: false,
       emptyOutDir: true,
     },
     define: {

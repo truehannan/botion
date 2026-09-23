@@ -4,6 +4,7 @@ import type {
   VectorizeIndex,
   Queue,
   Ai,
+  Fetcher,
 } from '@cloudflare/workers-types';
 
 /**
@@ -21,6 +22,8 @@ export type AppEnv = {
     AI: Ai;
     JWT_SECRET: string;
     ENVIRONMENT: string;
+    // Static assets binding (frontend SPA), configured in wrangler.toml [assets].
+    ASSETS: Fetcher;
   };
   Variables: {
     user: { id: string; email: string } | null;

@@ -20,33 +20,41 @@ import type { AppEnv } from '../server/types';
 
 const app = new Hono<AppEnv>();
 
+// All API routes live under /api so a single Worker can also serve the
+// static frontend (see [assets] in wrangler.toml, run_worker_first=["/api/*"]).
+const api = new Hono<AppEnv>();
+
 app.use('*', cors({ origin: '*', credentials: true }));
 
 // Auto-init schema in local/development mode
-app.use('*', async (c, next) => {
+api.use('*', async (c, next) => {
   if (c.env.ENVIRONMENT === 'development' || c.env.ENVIRONMENT === 'local') {
     await ensureSchema(c.env.DB);
   }
   await next();
 });
 
-app.use('*', authMiddleware);
+api.use('*', authMiddleware);
 
 // Health
-app.get('/health', (c) => c.json({ ok: true, env: c.env.ENVIRONMENT }));
+api.get('/health', (c) => c.json({ ok: true, env: c.env.ENVIRONMENT }));
 
 // REST API routes
-app.route('/auth', authRoutes);
-app.route('/workspaces', workspaceRoutes);
-app.route('/pages', pageRoutes);
-app.route('/databases', databaseRoutes);
-app.route('/properties', propertyRoutes);
-app.route('/property-values', propertyValueRoutes);
-app.route('/views', viewRoutes);
-app.route('/backlinks', backlinkRoutes);
-app.route('/settings', settingsRoutes);
-app.route('/sync', syncRoutes);
-app.route('/mcp', mcpRoutes);
+api.route('/auth', authRoutes);
+api.route('/workspaces', workspaceRoutes);
+api.route('/pages', pageRoutes);
+api.route('/databases', databaseRoutes);
+api.route('/properties', propertyRoutes);
+api.route('/property-values', propertyValueRoutes);
+api.route('/views', viewRoutes);
+api.route('/backlinks', backlinkRoutes);
+api.route('/settings', settingsRoutes);
+api.route('/sync', syncRoutes);
+api.route('/mcp', mcpRoutes);
+
+// Mount the API under /api. Also expose /health at the root for uptime checks.
+app.get('/health', (c) => c.json({ ok: true, env: c.env.ENVIRONMENT }));
+app.route('/api', api);
 
 // Worker entry
 export default {
