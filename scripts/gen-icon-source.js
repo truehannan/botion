@@ -8,7 +8,7 @@
  *   cd client && npx tauri icon src-tauri/icons/icon.png
  */
 import { deflateSync } from 'zlib';
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,6 +16,44 @@ const SIZE = 1024;
 // Resolve relative to this script (scripts/), not the caller's cwd.
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(ROOT, 'client/src-tauri/icons/icon.png');
+const LOGO_SVG = resolve(ROOT, 'public/logo.svg');
+
+// Preferred path: rasterize the official public/logo.svg (white glyph on the
+// brand-blue rounded square) using sharp, if it's available. Falls back to the
+// pure-Node drawn icon below when sharp isn't installed.
+async function tryRasterizeSvg() {
+  if (!existsSync(LOGO_SVG)) return false;
+  let sharp;
+  try {
+    ({ default: sharp } = await import('sharp'));
+  } catch {
+    return false; // sharp not installed — use fallback
+  }
+  const svg = readFileSync(LOGO_SVG, 'utf-8')
+    // Force the glyph to white so it reads on the blue background.
+    .replace(/fill="currentColor"/g, 'fill="#ffffff"');
+  const pad = Math.round(SIZE * 0.18);
+  const glyph = await sharp(Buffer.from(svg))
+    .resize(SIZE - pad * 2, SIZE - pad * 2, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer();
+  const bg = {
+    create: { width: SIZE, height: SIZE, channels: 4, background: { r: 37, g: 99, b: 235, alpha: 1 } },
+  };
+  const png = await sharp(bg)
+    .composite([{ input: glyph, gravity: 'centre' }])
+    .png()
+    .toBuffer();
+  mkdirSync(dirname(OUT), { recursive: true });
+  writeFileSync(OUT, png);
+  console.log(`wrote ${OUT} from public/logo.svg (${png.length} bytes, ${SIZE}x${SIZE})`);
+  return true;
+}
+
+// Try the real logo first; only fall back to the drawn glyph if sharp is absent.
+if (await tryRasterizeSvg()) {
+  process.exit(0);
+}
 
 // Botion accent (blue) background, near-white glyph.
 const BG = [37, 99, 235];       // #2563eb
