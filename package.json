@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "echo 'wrangler handles bundling via esbuild'",
+    "build": "pnpm --filter client build",
     "dev": "concurrently \"pnpm dev:worker\" \"pnpm dev:client\"",
     "dev:worker": "wrangler dev --port 8787 --local",
     "dev:client": "pnpm --filter client dev",

@@ -190,10 +190,27 @@ Deployment runs through **Workers Builds** (dashboard → your Worker →
 **Settings → Build**), which connects to your Git repo and runs a two-step
 process on every push to the production branch:
 
-1. **Build command** — leave empty (or `pnpm install`); the Worker's TS is
-   bundled by wrangler at deploy time, so no separate build is needed.
-2. **Deploy command** — `pnpm deploy:worker` (runs `scripts/deploy.js`, which
-   wraps `wrangler deploy`).
+1. **Build command** — **must build the frontend**, because the Worker serves
+   the SPA from `client/dist` via `[assets]`. Set it to:
+
+   ```
+   pnpm install && pnpm build
+   ```
+
+   (`pnpm build` runs `pnpm --filter client build` → produces `client/dist`.)
+   If `client/dist` is missing at deploy, wrangler fails with
+   *"the directory specified by the assets.directory field ... does not exist"*.
+
+2. **Deploy command** — `pnpm deploy:worker` (runs `scripts/deploy.js`: it also
+   builds `client/dist` as a safety net, injects the D1 id if provided, then
+   runs `wrangler deploy`). Using `pnpm deploy:worker` as the deploy command
+   makes the build step redundant-but-safe; if you'd rather keep the default
+   `npx wrangler deploy`, then the **Build command above is required**.
+
+> **The recurring `client/dist does not exist` error** means neither the Build
+> command built the frontend nor was `pnpm deploy:worker` used as the Deploy
+> command. Set the Build command to `pnpm install && pnpm build` (or the Deploy
+> command to `pnpm deploy:worker`) and it is fixed.
 
 ### Binding the D1 database id (fixes the recurring "database not found")
 
