@@ -81,7 +81,7 @@ if (d1Id) {
 // Workers Builds runs this deploy command; without it, wrangler errors that the
 // assets directory does not exist.
 log('Building frontend (client/dist)...');
-const build = spawnSync('pnpm', ['--filter', 'client', 'build'], {
+const build = spawnSync('node', ['scripts/build-client.js'], {
   stdio: 'inherit',
   env: { ...process.env, NODE_OPTIONS: process.env.NODE_OPTIONS || '--max-old-space-size=4096' },
 });

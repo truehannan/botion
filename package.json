@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter client build",
+    "build": "node scripts/build-client.js",
     "dev": "concurrently \"pnpm dev:worker\" \"pnpm dev:client\"",
     "dev:worker": "wrangler dev --port 8787 --local",
     "dev:client": "pnpm --filter client dev",

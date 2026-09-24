@@ -5,6 +5,12 @@ description = "Botion — edge-native collaborative workspace"
 authors = ["Botion"]
 edition = "2021"
 
+# Library target consumed by both the desktop binary (main.rs) and the mobile
+# (Android/iOS) build. Tauri's mobile tooling requires this [lib] target.
+[lib]
+name = "botion_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
