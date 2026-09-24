@@ -154,6 +154,40 @@ app.get('/me', authMiddleware, async (c) => {
   return c.json({ user: me });
 });
 
+// GET /auth/login-url?email=...&password=...
+// Programmatic login for native clients: the desktop/mobile app can obtain a
+// token by fetching a single URL, instead of posting a form. Returns the same
+// { token, user } shape as POST /auth/login. NOTE: credentials travel in the
+// query string, so use only over HTTPS. Convenience for the native connect flow.
+app.get('/login-url', async (c) => {
+  const email = c.req.query('email');
+  const password = c.req.query('password');
+  if (!email || !password) {
+    return c.json({ error: 'email and password query params are required' }, 400);
+  }
+
+  const db = createDb(c.env.DB);
+  const user = await db.queryOne<{ id: string; email: string; name: string | null; password_hash: string }>(
+    'SELECT id, email, name, password_hash FROM users WHERE email = ?',
+    [email]
+  );
+  if (!user) return c.json({ error: 'Invalid credentials' }, 401);
+
+  const providedHash = await hashPassword(password);
+  if (providedHash !== user.password_hash) return c.json({ error: 'Invalid credentials' }, 401);
+
+  try {
+    const secret = await getJwtSecret(c.env);
+    const token = await createToken(user.id, user.email, secret);
+    return c.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+  } catch (e) {
+    if (e instanceof JwtSecretMissingError) {
+      return c.json({ error: 'Server auth is not configured (JWT_SECRET missing).' }, 503);
+    }
+    throw e;
+  }
+});
+
 export default app;
 
 export { getJwtSecret };

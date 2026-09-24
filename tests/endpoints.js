@@ -95,6 +95,14 @@ async function main() {
     const r = await req('/auth/me', { token });
     ok('GET /auth/me', r.status === 200 && r.json?.user?.email === email, `status=${r.status}`);
   }
+  {
+    const r = await req(`/auth/login-url?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
+    ok('GET /auth/login-url (programmatic)', r.status === 200 && !!r.json?.token, `status=${r.status}`);
+  }
+  {
+    const r = await req(`/auth/login-url?email=${encodeURIComponent(email)}&password=wrong`);
+    ok('login-url wrong password (401)', r.status === 401, `status=${r.status}`);
+  }
 
   if (!token) {
     console.log('\n⛔ No token — cannot continue authenticated flows.');

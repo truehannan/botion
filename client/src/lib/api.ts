@@ -1,9 +1,13 @@
 import { useAuthStore } from '@/stores/authStore';
+import { localApi } from './localApi';
+import { isLocalMode } from './mode';
 
 function getBaseUrl(): string {
   const native = localStorage.getItem('botion_server_url');
   if (native) {
-    return native.endsWith('/') ? native.slice(0, -1) : native;
+    const clean = native.endsWith('/') ? native.slice(0, -1) : native;
+    // The Worker mounts the API under /api; append it if not already present.
+    return clean.endsWith('/api') ? clean : `${clean}/api`;
   }
   const prod = import.meta.env.VITE_API_URL;
   if (prod) {
@@ -32,7 +36,7 @@ async function fetchApi(path: string, options?: RequestInit) {
   return res.json();
 }
 
-export const api = {
+const remoteApi = {
   auth: {
     login: (email: string, password: string) =>
       fetchApi('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
@@ -99,3 +103,12 @@ export const api = {
     update: (data: any) => fetchApi('/settings', { method: 'PUT', body: JSON.stringify(data) }),
   },
 };
+
+// The active API: local (device storage, no server) or remote (Cloudflare).
+// Chosen per-call so a mode switch takes effect without reload.
+export const api: typeof remoteApi = new Proxy(remoteApi, {
+  get(target, group: string) {
+    const backend: any = isLocalMode() ? localApi : target;
+    return backend[group];
+  },
+}) as typeof remoteApi;

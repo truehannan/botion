@@ -1,20 +1,12 @@
 import { useEffect, useState } from 'react';
 import { AuthPage } from './components/AuthPage';
 import { NativeAuthScreen } from './components/NativeAuthScreen';
+import { ModeChooser } from './components/ModeChooser';
 import { Layout } from './components/Layout';
 import { useAuthStore } from './stores/authStore';
 import { useUIStore } from './stores/uiStore';
 import { api } from './lib/api';
-
-function isTauri(): boolean {
-  return !!window.__TAURI__;
-}
-
-declare global {
-  interface Window {
-    __TAURI__?: any;
-  }
-}
+import { isTauri, getMode, isLocalMode } from './lib/mode';
 
 function App() {
   const token = useAuthStore((s) => s.token);
@@ -22,9 +14,20 @@ function App() {
   const user = useAuthStore((s) => s.user);
   const setActiveWorkspaceId = useUIStore((s) => s.setActiveWorkspaceId);
   const [loading, setLoading] = useState(true);
+  // Re-render when the native mode is chosen.
+  const [mode, setModeState] = useState(getMode());
 
   useEffect(() => {
     async function init() {
+      // Local mode needs no login — seed a synthetic user and load workspaces.
+      if (isLocalMode()) {
+        const me = await api.auth.me();
+        setAuth('local', me.user);
+        const ws = await api.workspaces.list();
+        if (ws.workspaces?.length > 0) setActiveWorkspaceId(ws.workspaces[0].id);
+        setLoading(false);
+        return;
+      }
       if (token) {
         try {
           const res = await api.auth.me();
@@ -40,7 +43,7 @@ function App() {
       setLoading(false);
     }
     init();
-  }, [token, setAuth, setActiveWorkspaceId]);
+  }, [token, mode, setAuth, setActiveWorkspaceId]);
 
   if (loading) {
     return (
@@ -50,8 +53,13 @@ function App() {
     );
   }
 
+  // Native app: first launch must pick a mode (local vs connect to server).
+  if (isTauri() && !getMode()) {
+    return <ModeChooser onChosen={() => setModeState(getMode())} />;
+  }
+
   if (!user) {
-    if (isTauri()) return <NativeAuthScreen />;
+    if (isTauri()) return <NativeAuthScreen onBack={() => setModeState(getMode())} />;
     return <AuthPage />;
   }
 
