@@ -10,17 +10,17 @@ import { MentionInline } from './mention';
 export const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
-    callout: CalloutBlock.config,
-    code: CodeBlock.config,
-    math: MathBlock.config,
-    toggle: ToggleBlock.config,
-    embed: EmbedBlock.config,
-    multiColumn: MultiColumnBlock.config,
-    column: ColumnBlock.config,
+    callout: CalloutBlock,
+    code: CodeBlock,
+    math: MathBlock,
+    toggle: ToggleBlock,
+    embed: EmbedBlock,
+    multiColumn: MultiColumnBlock,
+    column: ColumnBlock,
   },
   inlineContentSpecs: {
     ...defaultInlineContentSpecs,
-    mention: MentionInline.config,
+    mention: MentionInline,
   },
 });
 
