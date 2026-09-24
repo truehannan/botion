@@ -5,7 +5,7 @@ const LANGUAGES = ['javascript', 'typescript', 'python', 'rust', 'go', 'java', '
 
 export const CodeBlock = createReactBlockSpec(
   {
-    type: 'code',
+    type: 'codeBlock',
     propSchema: { language: { default: 'javascript' }, textAlignment: { default: 'left' }, backgroundColor: { default: 'default' }, textColor: { default: 'default' } },
     content: 'inline',
   },

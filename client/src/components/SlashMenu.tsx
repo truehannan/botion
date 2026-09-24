@@ -17,7 +17,7 @@ export const getCustomSlashMenuItems = (editor: BlockNoteEditor) => [
     aliases: ['callout', 'alert', 'note'], group: 'Basic', icon: <AlertCircle className="h-4 w-4" />, subtext: 'A highlighted callout box.',
   },
   {
-    title: 'Code Block', onItemClick: () => { editor.insertBlocks([{ type: 'code', props: { language: 'javascript' } }], editor.getTextCursorPosition().block); },
+    title: 'Code Block', onItemClick: () => { editor.insertBlocks([{ type: 'codeBlock', props: { language: 'javascript' } }], editor.getTextCursorPosition().block); },
     aliases: ['code', 'snippet'], group: 'Basic', icon: <Code className="h-4 w-4" />, subtext: 'A code snippet with syntax highlighting.',
   },
   {

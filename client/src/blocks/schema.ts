@@ -11,7 +11,7 @@ export const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     callout: CalloutBlock,
-    code: CodeBlock,
+    codeBlock: CodeBlock,
     math: MathBlock,
     toggle: ToggleBlock,
     embed: EmbedBlock,
