@@ -13,7 +13,20 @@ const authSchema = z.object({
 const app = new Hono<AppEnv>();
 
 async function getJwtSecret(env: AppEnv['Bindings']) {
-  return new TextEncoder().encode(env.JWT_SECRET);
+  const secret = env.JWT_SECRET;
+  if (!secret || secret.length < 16) {
+    // Surface a clear, actionable error instead of a cryptic Web Crypto
+    // "HMAC key length (0)" failure when the secret isn't configured.
+    throw new JwtSecretMissingError();
+  }
+  return new TextEncoder().encode(secret);
+}
+
+export class JwtSecretMissingError extends Error {
+  constructor() {
+    super('JWT_SECRET is not configured on the server');
+    this.name = 'JwtSecretMissingError';
+  }
 }
 
 async function hashPassword(password: string): Promise<string> {
@@ -47,10 +60,14 @@ export async function authMiddleware(c: import('hono').Context<AppEnv>, next: im
 
   if (header?.startsWith('Bearer ')) {
     const token = header.slice(7);
-    const secret = await getJwtSecret(c.env);
-    const payload = await verifyToken(token, secret);
-    if (payload) {
-      c.set('user', payload);
+    try {
+      const secret = await getJwtSecret(c.env);
+      const payload = await verifyToken(token, secret);
+      if (payload) {
+        c.set('user', payload);
+      }
+    } catch {
+      // Missing/invalid JWT_SECRET → treat as unauthenticated rather than 500.
     }
   }
 
@@ -77,8 +94,16 @@ app.post('/register', async (c) => {
     .bind(userId, email, name ?? null, passwordHash, now, now)
     .run();
 
-  const secret = await getJwtSecret(c.env);
-  const token = await createToken(userId, email, secret);
+  let token;
+  try {
+    const secret = await getJwtSecret(c.env);
+    token = await createToken(userId, email, secret);
+  } catch (e) {
+    if (e instanceof JwtSecretMissingError) {
+      return c.json({ error: 'Server auth is not configured (JWT_SECRET missing). Set it via `wrangler secret put JWT_SECRET`.' }, 503);
+    }
+    throw e;
+  }
 
   return c.json({ token, user: { id: userId, email, name } });
 });
@@ -101,8 +126,16 @@ app.post('/login', async (c) => {
   const providedHash = await hashPassword(password);
   if (providedHash !== user.password_hash) return c.json({ error: 'Invalid credentials' }, 401);
 
-  const secret = await getJwtSecret(c.env);
-  const token = await createToken(user.id, user.email, secret);
+  let token;
+  try {
+    const secret = await getJwtSecret(c.env);
+    token = await createToken(user.id, user.email, secret);
+  } catch (e) {
+    if (e instanceof JwtSecretMissingError) {
+      return c.json({ error: 'Server auth is not configured (JWT_SECRET missing). Set it via `wrangler secret put JWT_SECRET`.' }, 503);
+    }
+    throw e;
+  }
 
   return c.json({ token, user });
 });

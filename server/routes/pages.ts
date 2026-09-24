@@ -148,8 +148,25 @@ app.delete('/:id', async (c) => {
   );
   if (!perm) return c.json({ error: 'Forbidden' }, 403);
 
-  await db.prepare('DELETE FROM pages WHERE id = ?').bind(pageId).run();
-  await db.prepare('DELETE FROM document_states WHERE page_id = ?').bind(pageId).run();
+  // Remove dependent rows before the page itself to satisfy foreign keys.
+  // (Not all FKs in the schema use ON DELETE CASCADE, so do it explicitly.)
+  // Property values tied to this page, then blocks/databases under it, then
+  // relations/backlinks referencing it (as source OR target), permissions,
+  // document state, any child pages' parent link, and finally the page row.
+  const st = (sql: string, ...params: unknown[]) => c.env.DB.prepare(sql).bind(...params);
+  await c.env.DB.batch([
+    st('DELETE FROM property_values WHERE page_id = ?', pageId),
+    st('DELETE FROM blocks WHERE page_id = ?', pageId),
+    // Databases under this page cascade to their properties/views/values.
+    st('DELETE FROM databases WHERE parent_page_id = ?', pageId),
+    st('DELETE FROM page_relations WHERE source_page_id = ? OR target_page_id = ?', pageId, pageId),
+    st('DELETE FROM backlinks WHERE source_page_id = ? OR target_page_id = ?', pageId, pageId),
+    st('DELETE FROM page_permissions WHERE page_id = ?', pageId),
+    st('DELETE FROM document_states WHERE page_id = ?', pageId),
+    // Detach any child pages so they don't dangle on a deleted parent.
+    st('UPDATE pages SET parent_id = NULL WHERE parent_id = ?', pageId),
+    st('DELETE FROM pages WHERE id = ?', pageId),
+  ]);
 
   return c.json({ success: true });
 });
