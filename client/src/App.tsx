@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AuthPage } from './components/AuthPage';
 import { NativeAuthScreen } from './components/NativeAuthScreen';
 import { ModeChooser } from './components/ModeChooser';
+import { UpdateBanner } from './components/UpdateBanner';
 import { Layout } from './components/Layout';
 import { useAuthStore } from './stores/authStore';
 import { useUIStore } from './stores/uiStore';
@@ -58,12 +59,19 @@ function App() {
     return <ModeChooser onChosen={() => setModeState(getMode())} />;
   }
 
+  let screen;
   if (!user) {
-    if (isTauri()) return <NativeAuthScreen onBack={() => setModeState(getMode())} />;
-    return <AuthPage />;
+    screen = isTauri() ? <NativeAuthScreen onBack={() => setModeState(getMode())} /> : <AuthPage />;
+  } else {
+    screen = <Layout />;
   }
 
-  return <Layout />;
+  return (
+    <div className="flex h-screen flex-col">
+      <UpdateBanner />
+      <div className="min-h-0 flex-1">{screen}</div>
+    </div>
+  );
 }
 
 export default App;

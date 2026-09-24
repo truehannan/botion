@@ -7,7 +7,15 @@
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_process::init())
         .setup(|_app| {
+            // Updater is desktop-only; register it there so the frontend can
+            // check GitHub releases and prompt to update.
+            #[cfg(desktop)]
+            {
+                _app.handle()
+                    .plugin(tauri_plugin_updater::Builder::new().build())?;
+            }
             #[cfg(debug_assertions)]
             {
                 use tauri::Manager;
